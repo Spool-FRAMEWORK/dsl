@@ -1,0 +1,69 @@
+infrastructure:
+  watchdog:
+    url: "http://localhost:8090"
+  
+  eventBus:
+    type: "KAFKA"
+    url: "localhost:9092"
+  
+  inbox:
+    sql:
+      type: "postgresql"
+      host: "localhost"
+      database: "spool"
+      user: "spool"
+      password: "spool"
+
+  dataLake:
+    sql:
+      type: "postgresql"
+      host: "localhost"
+      database: "spool"
+      user: "spool"
+      password: "spool"
+
+spoolModuleList:
+  - crawler:
+      id: "gemini-market"
+      source:
+        id: "gemini-market"
+        poll:
+          http:
+            url: "https://api.gemini.com/v2/ticker/BTCEUR"
+          schedule:
+            every: 5
+            unit: "SECONDS"
+        format: "JSON_OBJECT"
+      eventMapping:
+        namingConvention: "SNAKE_CASE"
+        attributeList:
+          - value: "symbol"
+
+  - crawler:
+      id: "gemini-market-v2"
+      source:
+        id: "gemini-market"
+        poll:
+          http:
+            url: "https://api.gemini.com/v1/trades/BTCEUR?limit_trades=100"
+          schedule:
+            every: 60
+            unit: "SECONDS"
+        format: "JSON_ARRAY"
+      eventMapping:
+        namingConvention: "SNAKE_CASE"
+        attributeList:
+          - value: "type"
+
+  - feeder:
+      id: "gemini-feeder"
+      poll:
+        every: 5
+        unit: "SECONDS"
+
+  - ingester:
+      id: "gemini-ingester"
+      flush:
+        size: 100
+        every: 1
+        unit: "SECONDS"
