@@ -6,12 +6,11 @@ import software.spool.core.model.spool.SpoolNode;
 import software.spool.core.port.bus.EventBus;
 import software.spool.core.port.serde.NamingConvention;
 import software.spool.core.utils.polling.PollingConfiguration;
-import software.spool.crawler.Main;
 import software.spool.crawler.api.builder.CrawlerBuilderFactory;
 import software.spool.crawler.api.builder.EventMappingSpecification;
 import software.spool.crawler.api.port.source.PollSource;
 import software.spool.crawler.api.utils.CrawlerPorts;
-import software.spool.crawler.api.utils.StandardFormat;
+import software.spool.crawler.api.utils.StandardNormalizer;
 import software.spool.dsl.descriptors.SpoolNodeDescriptor;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
 import software.spool.dsl.descriptors.module.SpoolModuleDescriptor;
@@ -100,7 +99,10 @@ public abstract class SpoolNodeDSL {
                 .schedule(buildScheduleFrom(crawler.source().poll().schedule()))
                 .ports(buildPortsFrom(infrastructure))
                 .eventMapping(buildEventMappingFrom(crawler.eventMapping()))
-                .createWith(StandardFormat.valueOf(crawler.source().format()));
+                .createWith(new StandardNormalizer.Builder()
+                        .rootPath(crawler.source().rootPath())
+                        .enrichRules(crawler.source().enrichment())
+                        .valueOf(crawler.source().format()));
     }
 
     private static PollSource<?> buildPollSourceFrom(SourceDescriptor sourceDescriptor) {

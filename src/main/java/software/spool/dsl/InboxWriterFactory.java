@@ -4,7 +4,6 @@ import com.zaxxer.hikari.HikariConfig;
 import com.zaxxer.hikari.HikariDataSource;
 import software.spool.crawler.api.adapter.InMemoryInboxWriter;
 import software.spool.crawler.api.port.InboxWriter;
-import software.spool.crawler.dsl.SQLInboxWriter;
 import software.spool.dsl.descriptors.infrastructure.InboxDescriptor;
 
 class InboxWriterFactory {

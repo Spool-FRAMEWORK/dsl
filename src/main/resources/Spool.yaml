@@ -24,36 +24,118 @@ infrastructure:
 
 spoolModuleList:
   - crawler:
-      id: "gemini-market"
+      id: "msft-crawler"
       source:
-        id: "gemini-market"
+        id: "msft"
         poll:
           http:
-            url: "https://api.gemini.com/v2/ticker/BTCEUR"
+            url: "https://data.sec.gov/api/xbrl/companyfacts/CIK0000789019.json"
           schedule:
-            every: 5
+            every: 120
             unit: "SECONDS"
-        format: "JSON_OBJECT"
+        format: JSON_ARRAY
+        rootPath: "facts.dei.EntityCommonStockSharesOutstanding.units.shares"
+        enrichment:
+          - source: "entityName"
       eventMapping:
         namingConvention: "SNAKE_CASE"
         attributeList:
-          - value: "symbol"
+          - value: "entityName"
 
   - crawler:
-      id: "gemini-market-v2"
+      id: "amzn-crawler"
       source:
-        id: "gemini-market"
+        id: "amzn"
         poll:
           http:
-            url: "https://api.gemini.com/v1/trades/BTCEUR?limit_trades=100"
+            url: "https://data.sec.gov/api/xbrl/companyfacts/CIK0001018724.json"
           schedule:
-            every: 60
+            every: 120
             unit: "SECONDS"
-        format: "JSON_ARRAY"
+        format: JSON_ARRAY
+        rootPath: "facts.dei.EntityCommonStockSharesOutstanding.units.shares"
+        enrichment:
+          - source: "entityName"
       eventMapping:
         namingConvention: "SNAKE_CASE"
         attributeList:
-          - value: "type"
+          - value: "entityName"
+
+  - crawler:
+      id: "nvda-crawler"
+      source:
+        id: "nvda"
+        poll:
+          http:
+            url: "https://data.sec.gov/api/xbrl/companyfacts/CIK0001045810.json"
+          schedule:
+            every: 120
+            unit: "SECONDS"
+        format: JSON_ARRAY
+        rootPath: "facts.dei.EntityCommonStockSharesOutstanding.units.shares"
+        enrichment:
+          - source: "entityName"
+      eventMapping:
+        namingConvention: "SNAKE_CASE"
+        attributeList:
+          - value: "entityName"
+
+  - crawler:
+      id: "googl-crawler"
+      source:
+        id: "googl"
+        poll:
+          http:
+            url: "https://data.sec.gov/api/xbrl/companyfacts/CIK0001652044.json"
+          schedule:
+            every: 120
+            unit: "SECONDS"
+        format: JSON_ARRAY
+        rootPath: "facts.dei.EntityCommonStockSharesOutstanding.units.shares"
+        enrichment:
+          - source: "entityName"
+      eventMapping:
+        namingConvention: "SNAKE_CASE"
+        attributeList:
+          - value: "entityName"
+
+  - crawler:
+      id: "meta-crawler"
+      source:
+        id: "meta"
+        poll:
+          http:
+            url: "https://data.sec.gov/api/xbrl/companyfacts/CIK0001326801.json"
+          schedule:
+            every: 120
+            unit: "SECONDS"
+        format: JSON_ARRAY
+        rootPath: "facts.dei.EntityCommonStockSharesOutstanding.units.shares"
+        enrichment:
+          - source: "entityName"
+      eventMapping:
+        namingConvention: "SNAKE_CASE"
+        attributeList:
+          - value: "entityName"
+
+  - crawler:
+      id: "tsla-crawler"
+      source:
+        id: "tsla"
+        poll:
+          http:
+            url: "https://data.sec.gov/api/xbrl/companyfacts/CIK0001318605.json"
+          schedule:
+            every: 120
+            unit: "SECONDS"
+        format: JSON_ARRAY
+        rootPath: "facts.dei.EntityCommonStockSharesOutstanding.units.shares"
+        enrichment:
+          - source: "entityName"
+      eventMapping:
+        namingConvention: "SNAKE_CASE"
+        attributeList:
+          - value: "entityName"
 
   - feeder:
       id: "gemini-feeder"
@@ -65,5 +147,5 @@ spoolModuleList:
       id: "gemini-ingester"
       flush:
         size: 100
-        every: 1
+        every: 10
         unit: "SECONDS"
