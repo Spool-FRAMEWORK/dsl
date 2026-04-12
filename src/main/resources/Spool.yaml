@@ -1,26 +1,22 @@
 infrastructure:
   watchdog:
     url: "http://localhost:8090"
-  
+
   eventBus:
     type: "KAFKA"
     url: "localhost:9092"
-  
+
   inbox:
-    sql:
-      type: "postgresql"
-      host: "localhost"
-      database: "spool"
-      user: "spool"
-      password: "spool"
+    s3:
+      bucket: spool-inbox
+      region: us-east-1
+      endpoint: http://host.docker.internal:4566
 
   dataLake:
-    sql:
-      type: "postgresql"
-      host: "localhost"
-      database: "spool"
-      user: "spool"
-      password: "spool"
+    s3:
+      bucket: spool-datalake
+      region: us-east-1
+      endpoint: http://host.docker.internal:4566
 
 spoolModuleList:
   - crawler:
@@ -34,7 +30,7 @@ spoolModuleList:
             every: 120
             unit: "SECONDS"
         format: JSON_ARRAY
-        rootPath: "facts.dei.EntityCommonStockSharesOutstanding.units.shares"
+        rootPath: "facts.dei.EntityCommonStockSharesOutstanding.units.sharese"
         enrichment:
           - source: "entityName"
       eventMapping:
@@ -147,5 +143,5 @@ spoolModuleList:
       id: "gemini-ingester"
       flush:
         size: 100
-        every: 10
+        every: 5
         unit: "SECONDS"

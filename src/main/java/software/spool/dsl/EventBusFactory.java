@@ -5,13 +5,15 @@ import software.spool.core.adapter.kafka.KafkaEventBusConfig;
 import software.spool.core.adapter.kafka.KafkaEventBusEmitter;
 import software.spool.core.adapter.kafka.KafkaEventBusListener;
 import software.spool.core.adapter.memory.InMemoryEventBus;
+import software.spool.core.adapter.otel.OpenTelemetryTracedEventBus;
 import software.spool.core.port.bus.EventBus;
 import software.spool.core.port.bus.EventBusEmitter;
 import software.spool.core.port.bus.EventBusListener;
+import software.spool.core.port.decorator.TraceEventBusEmitter;
 import software.spool.dsl.descriptors.infrastructure.EventBusDescriptor;
 
-class EventBusFactory {
-    protected static EventBus from(EventBusDescriptor descriptor) {
+public class EventBusFactory {
+    public static EventBus from(EventBusDescriptor descriptor) {
         return switch (descriptor.type()) {
             case KAFKA -> kafka(descriptor.url());
             case IN_MEMORY -> console();
@@ -27,7 +29,8 @@ class EventBusFactory {
     }
 
     protected static EventBusEmitter kafkaEmitter(String url) {
-        return new KafkaEventBusEmitter(new KafkaEventBusConfig(url));
+        return TraceEventBusEmitter.of(new KafkaEventBusEmitter(new KafkaEventBusConfig(url)))
+                .with(new OpenTelemetryTracedEventBus());
     }
 
     protected static EventBusListener kafkaListener(String url) {

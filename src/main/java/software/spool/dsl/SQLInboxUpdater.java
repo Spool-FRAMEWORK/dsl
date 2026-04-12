@@ -44,10 +44,6 @@ public class SQLInboxUpdater implements InboxUpdater {
             ps.setString(2, idempotencyKey.value());
 
             try (ResultSet rs = ps.executeQuery()) {
-                if (!rs.next()) {
-                    throw new InboxUpdateException(idempotencyKey, "No inbox item found for key");
-                }
-
                 EventMetadata metadata = metadataDeserializer.deserialize(rs.getString("metadata"));
                 PartitionKeySchema partitionKeySchema =
                         partitionKeySchemaDeserializer.deserialize(rs.getString("partition_key_schema"));

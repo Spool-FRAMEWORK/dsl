@@ -5,6 +5,7 @@ import java.util.Arrays;
 public enum DataLakeType {
     SQL("sql"),
     IN_MEMORY("inMemory"),
+    S3("s3"),
     CUSTOM("custom");
 
     private final String fieldName;

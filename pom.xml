@@ -152,5 +152,10 @@
             <artifactId>ingester</artifactId>
             <version>1.0.2-SNAPSHOT</version>
         </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+            <version>2.25.60</version>
+        </dependency>
     </dependencies>
 </project>

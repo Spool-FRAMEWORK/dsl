@@ -4,6 +4,7 @@ import java.util.Arrays;
 
 public enum InboxType {
     SQL("sql"),
+    S3("s3"),
     IN_MEMORY("inMemory"),
     CUSTOM("custom");
 

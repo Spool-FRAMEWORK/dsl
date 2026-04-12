@@ -8,10 +8,11 @@ import java.util.stream.Stream;
 public record InboxDescriptor(
         InMemory inMemory,
         Sql sql,
+        S3 s3,
         Custom custom
 ) {
     public InboxDescriptor {
-        if (Stream.of(sql, inMemory, custom).filter(Objects::nonNull).count() != 1)
+        if (Stream.of(sql, s3,inMemory, custom).filter(Objects::nonNull).count() != 1)
             throw new IllegalArgumentException("Inbox descriptor must contain exactly one configuration");
     }
 
@@ -35,5 +36,6 @@ public record InboxDescriptor(
 
     public static record InMemory() {}
     public static record Sql(String type, String host, String database, String user, String password) {}
+    public static record S3(String bucket, String region, String endpoint) {}
     public static record Custom(String implementationClass) {}
 }

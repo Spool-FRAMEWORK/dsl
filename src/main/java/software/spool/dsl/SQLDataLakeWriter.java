@@ -1,6 +1,7 @@
 package software.spool.dsl;
 
 import software.spool.core.model.event.ItemPublished;
+import software.spool.core.model.vo.IdempotencyKey;
 import software.spool.core.model.vo.PartitionKey;
 import software.spool.ingester.api.port.DataLakeWriter;
 
@@ -9,6 +10,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.Collection;
+import java.util.stream.Stream;
 
 public class SQLDataLakeWriter implements DataLakeWriter {
     private static final String CREATE_TABLE = """
@@ -35,8 +37,8 @@ public class SQLDataLakeWriter implements DataLakeWriter {
     }
 
     @Override
-    public void write(Collection<ItemPublished> items) {
-        if (items == null || items.isEmpty()) return;
+    public Stream<IdempotencyKey> write(Collection<ItemPublished> items) {
+        if (items == null || items.isEmpty()) return Stream.of();
 
         try (Connection conn = openConnection();
              PreparedStatement stmt = conn.prepareStatement(UPSERT)) {
@@ -52,6 +54,7 @@ public class SQLDataLakeWriter implements DataLakeWriter {
         } catch (SQLException e) {
             throw new RuntimeException("Failed to write items to PostgreSQL DataLake", e);
         }
+        return items.stream().map(ItemPublished::idempotencyKey);
     }
 
     private void initSchema() {
