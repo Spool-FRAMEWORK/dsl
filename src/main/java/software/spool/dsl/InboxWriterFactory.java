@@ -15,6 +15,7 @@ import software.spool.dsl.descriptors.infrastructure.InboxDescriptor;
 import software.spool.ingester.api.port.DataLakeWriter;
 
 import java.net.URI;
+import java.util.Objects;
 
 public class InboxWriterFactory {
     public static InboxWriter from(InboxDescriptor descriptor) {
@@ -30,7 +31,7 @@ public class InboxWriterFactory {
 
     public static InboxWriter sql(String dbType, String host, String database, String user, String password) {
         HikariConfig config = new HikariConfig();
-        config.setJdbcUrl(String.format("jdbc:%s://%s/%s", dbType, host, database));
+        config.setJdbcUrl(String.format("jdbc:%s://%s/%s", dbType, host, Objects.requireNonNullElse(database, "")));
         config.setUsername(user);
         config.setPassword(password);
         config.setMaximumPoolSize(5);
