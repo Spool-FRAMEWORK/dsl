@@ -28,7 +28,7 @@ public abstract class SpoolNodeDSL {
 
     public static void fromDescriptor(SpoolNodeDescriptor descriptor) throws IOException {
         SpoolNode node = SpoolNode.create();
-        buildModulesFrom(descriptor.spoolModuleList(), descriptor.infrastructure())
+        buildModulesFrom(descriptor.modules(), descriptor.infrastructure())
                 .forEach(node::register);
         node.start();
     }

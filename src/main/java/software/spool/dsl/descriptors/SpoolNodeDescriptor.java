@@ -7,6 +7,6 @@ import java.util.List;
 
 public record SpoolNodeDescriptor(
         InfrastructureDescriptor infrastructure,
-        List<SpoolModuleDescriptor> spoolModuleList
+        List<SpoolModuleDescriptor> modules
 ) {
 }
