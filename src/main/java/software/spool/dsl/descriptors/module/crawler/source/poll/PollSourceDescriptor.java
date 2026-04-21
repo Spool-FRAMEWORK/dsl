@@ -6,7 +6,7 @@ import java.util.Arrays;
 public record PollSourceDescriptor(
         Http http,
         File file,
-        DataBase dataBase,
+        DataBase database,
         ScheduleDescriptor schedule
         ) {
     public PollSourceType type() {

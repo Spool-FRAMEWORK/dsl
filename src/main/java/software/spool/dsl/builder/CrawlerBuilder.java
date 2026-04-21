@@ -38,7 +38,7 @@ public class CrawlerBuilder {
     }
 
     private static PollingConfiguration buildScheduleFrom(ScheduleDescriptor scheduleDescriptor) {
-        return PollingConfiguration.every(Duration.ofSeconds(scheduleDescriptor.every()));
+        return PollingConfiguration.every(Duration.ofMillis(scheduleDescriptor.everyMilliseconds()));
     }
 
     private static EventMappingSpecification buildEventMappingFrom(EventMappingDescriptor eventMappingDescriptor) {

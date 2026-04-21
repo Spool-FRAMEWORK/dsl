@@ -1,4 +1,4 @@
 package software.spool.dsl.descriptors.module.crawler.source.poll;
 
-public record ScheduleDescriptor(Integer every, String unit) {
+public record ScheduleDescriptor(Integer everyMilliseconds) {
 }
