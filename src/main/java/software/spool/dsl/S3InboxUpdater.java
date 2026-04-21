@@ -75,7 +75,6 @@ public class S3InboxUpdater implements InboxUpdater {
             );
             InboxItemDto dto = mapper.readValue(raw.asByteArray(), InboxItemDto.class);
 
-            // Mover al nuevo prefijo (copy + delete)
             s3Client.copyObject(CopyObjectRequest.builder()
                     .sourceBucket(bucketName).sourceKey(sourceKey)
                     .destinationBucket(bucketName).destinationKey(destinationKey)

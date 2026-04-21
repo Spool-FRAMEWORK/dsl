@@ -43,7 +43,7 @@ public class S3InboxReader implements InboxReader {
 
     @Override
     public Stream<InboxItem> findByStatus(InboxItemStatus status) throws InboxReadException {
-        String sourcePrefix     = INBOX_PREFIX + status.name() + "/";
+        String sourcePrefix = INBOX_PREFIX + status.name() + "/";
         String publishingPrefix = INBOX_PREFIX + InboxItemStatus.PUBLISHING.name() + "/";
 
         try {
