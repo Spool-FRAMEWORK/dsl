@@ -2,6 +2,7 @@ package software.spool.dsl;
 
 import software.spool.core.model.event.ItemPublished;
 import software.spool.core.model.vo.IdempotencyKey;
+import software.spool.core.model.vo.InboxItem;
 import software.spool.core.model.vo.PartitionKey;
 import software.spool.ingester.api.port.DataLakeWriter;
 
@@ -37,13 +38,13 @@ public class SQLDataLakeWriter implements DataLakeWriter {
     }
 
     @Override
-    public Stream<IdempotencyKey> write(Collection<ItemPublished> items) {
+    public Stream<IdempotencyKey> write(Collection<InboxItem> items) {
         if (items == null || items.isEmpty()) return Stream.of();
 
         try (Connection conn = openConnection();
              PreparedStatement stmt = conn.prepareStatement(UPSERT)) {
             conn.setAutoCommit(false);
-            for (ItemPublished item : items) {
+            for (InboxItem item : items) {
                 stmt.setString(1, item.idempotencyKey().value());
                 stmt.setString(2, PartitionKey.of(item.partitionKeySchema()).from(item.payload()).value());
                 stmt.setString(3, item.payload());
@@ -54,7 +55,7 @@ public class SQLDataLakeWriter implements DataLakeWriter {
         } catch (SQLException e) {
             throw new RuntimeException("Failed to write items to PostgreSQL DataLake", e);
         }
-        return items.stream().map(ItemPublished::idempotencyKey);
+        return items.stream().map(InboxItem::idempotencyKey);
     }
 
     private void initSchema() {

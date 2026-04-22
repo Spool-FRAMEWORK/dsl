@@ -3,6 +3,7 @@ package software.spool.dsl.builder;
 import software.spool.core.port.bus.EventBus;
 import software.spool.dsl.DataLakeWriterFactory;
 import software.spool.dsl.EventBusFactory;
+import software.spool.dsl.InboxReaderFactory;
 import software.spool.dsl.InboxUpdaterFactory;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
 import software.spool.dsl.descriptors.module.ingester.FlushIngesterDescriptor;
@@ -41,6 +42,7 @@ public class IngesterBuilder {
         return configuration.reactive()
                 .from(eventBus)
                 .storesWith(DataLakeWriterFactory.from(infrastructure.dataLake()))
+                .readWith(InboxReaderFactory.from(infrastructure.inbox()))
                 .quarantineStore(System.out::println)
                 .on(eventBus)
                 .updatedWith(InboxUpdaterFactory.from(infrastructure.inbox()))

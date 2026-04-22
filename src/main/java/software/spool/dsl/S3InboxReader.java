@@ -20,11 +20,12 @@ import software.spool.core.model.vo.EventMetadata;
 import software.spool.core.model.vo.IdempotencyKey;
 import software.spool.core.model.vo.InboxItem;
 import software.spool.core.model.vo.PartitionKeySchema;
-import software.spool.feeder.api.port.InboxReader;
+import software.spool.core.port.inbox.InboxReader;
 
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 public class S3InboxReader implements InboxReader {
@@ -101,6 +102,61 @@ public class S3InboxReader implements InboxReader {
         } catch (Exception e) {
             System.out.println(e.getMessage());
             throw new InboxReadException("Failed to read inbox items from S3: " + e.getMessage(), e);
+        }
+    }
+
+    @Override
+    public Optional<InboxItem> getBy(IdempotencyKey idempotencyKey) throws InboxReadException {
+        try {
+            for (InboxItemStatus status : InboxItemStatus.values()) {
+                String prefix = INBOX_PREFIX + status.name() + "/" + idempotencyKey.value();
+
+                ListObjectsV2Response listing = s3Client.listObjectsV2(
+                        ListObjectsV2Request.builder()
+                                .bucket(bucketName)
+                                .prefix(prefix)
+                                .build()
+                );
+
+                if (listing.contents().isEmpty()) {
+                    continue;
+                }
+
+                S3Object s3Object = listing.contents().stream()
+                        .filter(obj -> obj.key().equals(prefix) || obj.key().startsWith(prefix))
+                        .findFirst()
+                        .orElse(null);
+
+                if (s3Object == null) {
+                    continue;
+                }
+
+                ResponseBytes<GetObjectResponse> raw = s3Client.getObjectAsBytes(
+                        GetObjectRequest.builder()
+                                .bucket(bucketName)
+                                .key(s3Object.key())
+                                .build()
+                );
+
+                InboxItemDto dto = mapper.readValue(raw.asByteArray(), InboxItemDto.class);
+
+                return Optional.of(new InboxItem(
+                        new IdempotencyKey(dto.idempotencyKey()),
+                        PayloadDeserializerFactory.json().as(EventMetadata.class).deserialize(dto.metadata()),
+                        DomainMapperFactory.camelCase(PartitionKeySchema.class).deserialize(dto.partitionKeySchema()),
+                        dto.payload(),
+                        InboxItemStatus.valueOf(dto.status()),
+                        dto.timestamp()
+                ));
+            }
+
+            return Optional.empty();
+
+        } catch (Exception e) {
+            throw new InboxReadException(
+                    "Failed to read inbox item from S3 for idempotency key: " + idempotencyKey,
+                    e
+            );
         }
     }
 

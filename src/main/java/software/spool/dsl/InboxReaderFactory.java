@@ -9,8 +9,8 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3ClientBuilder;
 import software.amazon.awssdk.services.s3.S3Configuration;
+import software.spool.core.port.inbox.InboxReader;
 import software.spool.dsl.descriptors.infrastructure.InboxDescriptor;
-import software.spool.feeder.api.port.InboxReader;
 
 import java.net.URI;
 

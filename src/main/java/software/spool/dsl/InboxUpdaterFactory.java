@@ -9,7 +9,6 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.S3ClientBuilder;
 import software.amazon.awssdk.services.s3.S3Configuration;
-import software.spool.core.adapter.sql.SQLInboxUpdater;
 import software.spool.core.port.inbox.InboxUpdater;
 import software.spool.dsl.descriptors.infrastructure.InboxDescriptor;
 

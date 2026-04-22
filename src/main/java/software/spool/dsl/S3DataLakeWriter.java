@@ -3,8 +3,8 @@ package software.spool.dsl;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
-import software.spool.core.model.event.ItemPublished;
 import software.spool.core.model.vo.IdempotencyKey;
+import software.spool.core.model.vo.InboxItem;
 import software.spool.core.model.vo.PartitionKey;
 import software.spool.ingester.api.port.DataLakeWriter;
 
@@ -25,9 +25,9 @@ public class S3DataLakeWriter implements DataLakeWriter {
     }
 
     @Override
-    public Stream<IdempotencyKey> write(Collection<ItemPublished> items) {
+    public Stream<IdempotencyKey> write(Collection<InboxItem> items) {
         List<IdempotencyKey> written = new ArrayList<>();
-        for (ItemPublished item : items) {
+        for (InboxItem item : items) {
             try {
                 byte[] payload = item.payload().getBytes(StandardCharsets.UTF_8);
                 String key = buildKey(item);
@@ -46,7 +46,7 @@ public class S3DataLakeWriter implements DataLakeWriter {
         return written.stream();
     }
 
-    private String buildKey(ItemPublished item) {
+    private String buildKey(InboxItem item) {
         String partition = PartitionKey.of(item.partitionKeySchema()).from(item.payload()).value();
         String filename = item.idempotencyKey().value();
         return partition.replace("::", "/") + "/" + filename;
