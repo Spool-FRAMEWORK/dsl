@@ -1,6 +1,8 @@
 package software.spool.dsl.builder;
 
+import com.mysql.cj.x.protobuf.MysqlxNotice;
 import software.spool.core.port.bus.EventBus;
+import software.spool.core.port.inbox.InboxReader;
 import software.spool.dsl.DataLakeWriterFactory;
 import software.spool.dsl.EventBusFactory;
 import software.spool.dsl.InboxReaderFactory;
@@ -31,6 +33,7 @@ public class IngesterBuilder {
                 .from(eventBus)
                 .flushPolicy(buildFlushPolicyFrom(ingester.flush()))
                 .storesWith(DataLakeWriterFactory.from(infrastructure.dataLake()))
+                .readWith(InboxReaderFactory.from(infrastructure.inbox()))
                 .quarantineStore(System.out::println)
                 .on(eventBus)
                 .updatedWith(InboxUpdaterFactory.from(infrastructure.inbox()))
