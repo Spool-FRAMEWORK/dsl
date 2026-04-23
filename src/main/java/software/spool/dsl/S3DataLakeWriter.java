@@ -49,6 +49,6 @@ public class S3DataLakeWriter implements DataLakeWriter {
     private String buildKey(InboxItem item) {
         String partition = PartitionKey.of(item.partitionKeySchema()).from(item.payload()).value();
         String filename = item.idempotencyKey().value();
-        return partition.replace("::", "/") + "/" + filename;
+        return "bronze/" + partition.replace("::", "/") + "/" + filename + ".json";
     }
 }
