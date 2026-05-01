@@ -18,7 +18,7 @@ infrastructure:
       region: us-east-1
       endpoint: http://host.docker.internal:4566
 
-spoolModuleList:
+modules:
   - crawler:
       id: "msft-crawler"
       source:
@@ -133,8 +133,8 @@ spoolModuleList:
         attributeList:
           - value: "entityName"
 
-  - feeder:
-      id: "gemini-feeder"
+  - janitor:
+      id: "gemini-janitor"
       poll:
         every: 5
         unit: "SECONDS"

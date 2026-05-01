@@ -4,7 +4,7 @@ import software.spool.core.adapter.jackson.PayloadDeserializerFactory;
 import software.spool.core.model.spool.SpoolModule;
 import software.spool.core.model.spool.SpoolNode;
 import software.spool.dsl.builder.CrawlerBuilder;
-import software.spool.dsl.builder.FeederBuilder;
+import software.spool.dsl.builder.JanitorBuilder;
 import software.spool.dsl.builder.IngesterBuilder;
 import software.spool.dsl.descriptors.SpoolNodeDescriptor;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
@@ -48,7 +48,7 @@ public abstract class SpoolNodeDSL {
     ) {
         return switch (moduleDescriptor.type()) {
             case CRAWLER -> CrawlerBuilder.buildFrom(moduleDescriptor.crawler(), infrastructure);
-            case FEEDER -> FeederBuilder.buildFrom(moduleDescriptor.feeder(), infrastructure);
+            case JANITOR -> JanitorBuilder.buildFrom(moduleDescriptor.janitor(), infrastructure);
             case INGESTER -> IngesterBuilder.buildFrom(moduleDescriptor.ingester(), infrastructure);
         };
     }

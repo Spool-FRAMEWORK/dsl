@@ -1,15 +1,14 @@
 package software.spool.dsl.builder;
 
-import com.mysql.cj.x.protobuf.MysqlxNotice;
 import software.spool.core.port.bus.EventBus;
-import software.spool.core.port.inbox.InboxReader;
-import software.spool.dsl.DataLakeWriterFactory;
-import software.spool.dsl.EventBusFactory;
-import software.spool.dsl.InboxReaderFactory;
-import software.spool.dsl.InboxUpdaterFactory;
+import software.spool.dsl.descriptors.infrastructure.DataLakeDescriptor;
+import software.spool.dsl.descriptors.infrastructure.EventBusDescriptor;
+import software.spool.dsl.descriptors.infrastructure.InboxDescriptor;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
 import software.spool.dsl.descriptors.module.ingester.FlushIngesterDescriptor;
 import software.spool.dsl.descriptors.module.ingester.IngesterDescriptor;
+import software.spool.infrastructure.PluginRegistry;
+import software.spool.infrastructure.spi.provider.*;
 import software.spool.ingester.api.Ingester;
 import software.spool.ingester.api.builder.IngesterBuilderFactory;
 import software.spool.ingester.internal.utils.FlushPolicy;
@@ -32,11 +31,10 @@ public class IngesterBuilder {
         return configuration.buffered()
                 .from(eventBus)
                 .flushPolicy(buildFlushPolicyFrom(ingester.flush()))
-                .storesWith(DataLakeWriterFactory.from(infrastructure.dataLake()))
-                .readWith(InboxReaderFactory.from(infrastructure.inbox()))
+                .storesWith(PluginRegistry.resolve(DataLakeWriterProvider.class, buildDataLakeConfigurationFrom(infrastructure.dataLake())))
+                .readWith(PluginRegistry.resolve(InboxReaderProvider.class, buildInboxConfigurationFrom(infrastructure.inbox())))
                 .quarantineStore(System.out::println)
                 .on(eventBus)
-                .updatedWith(InboxUpdaterFactory.from(infrastructure.inbox()))
                 .create();
     }
 
@@ -44,19 +42,37 @@ public class IngesterBuilder {
         EventBus eventBus = buildEventBusFrom(infrastructure);
         return configuration.reactive()
                 .from(eventBus)
-                .storesWith(DataLakeWriterFactory.from(infrastructure.dataLake()))
-                .readWith(InboxReaderFactory.from(infrastructure.inbox()))
+                .storesWith(PluginRegistry.resolve(DataLakeWriterProvider.class, buildDataLakeConfigurationFrom(infrastructure.dataLake())))
+                .readWith(PluginRegistry.resolve(InboxReaderProvider.class, buildInboxConfigurationFrom(infrastructure.inbox())))
                 .quarantineStore(System.out::println)
                 .on(eventBus)
-                .updatedWith(InboxUpdaterFactory.from(infrastructure.inbox()))
                 .create();
     }
 
     private static EventBus buildEventBusFrom(InfrastructureDescriptor infrastructure) {
-        return EventBusFactory.from(infrastructure.eventBus());
+        return PluginRegistry.resolve(EventBusProvider.class, buildBusConfigurationFrom(infrastructure.eventBus()));
     }
 
     private static FlushPolicy buildFlushPolicyFrom(FlushIngesterDescriptor flush) {
         return FlushPolicy.whenReaches(flush.size()).orEvery(Duration.ofSeconds(flush.every()));
+    }
+
+    private static PluginConfiguration buildDataLakeConfigurationFrom(DataLakeDescriptor inboxDescriptor) {
+        return PluginConfiguration.builder()
+                .with("endpoint", inboxDescriptor.s3().endpoint())
+                .with("region", inboxDescriptor.s3().region())
+                .with("bucket", inboxDescriptor.s3().bucket()).build();
+    }
+
+    private static PluginConfiguration buildBusConfigurationFrom(EventBusDescriptor eventBusDescriptor) {
+        return PluginConfiguration.builder()
+                .with("bootstrap.servers", eventBusDescriptor.url()).build();
+    }
+
+    private static PluginConfiguration buildInboxConfigurationFrom(InboxDescriptor inboxDescriptor) {
+        return PluginConfiguration.builder()
+                .with("endpoint", inboxDescriptor.s3().endpoint())
+                .with("region", inboxDescriptor.s3().region())
+                .with("bucket", inboxDescriptor.s3().bucket()).build();
     }
 }

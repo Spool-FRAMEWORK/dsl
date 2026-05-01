@@ -4,7 +4,7 @@ import java.util.Arrays;
 
 public enum SpoolModuleType {
     CRAWLER("crawler"),
-    FEEDER("feeder"),
+    JANITOR("janitor"),
     INGESTER("ingester");
 
     private final String fieldName;

@@ -134,38 +134,8 @@
     <dependencies>
         <dependency>
             <groupId>io.github.spool-framework</groupId>
-            <artifactId>core</artifactId>
-            <version>1.0.18-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>io.github.spool-framework</groupId>
-            <artifactId>feeder</artifactId>
-            <version>1.0.5-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>io.github.spool-framework</groupId>
-            <artifactId>crawler</artifactId>
-            <version>1.0.6-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>io.github.spool-framework</groupId>
-            <artifactId>ingester</artifactId>
-            <version>1.0.2-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>software.amazon.awssdk</groupId>
-            <artifactId>s3</artifactId>
-            <version>2.25.60</version>
-        </dependency>
-        <dependency>
-            <groupId>io.github.spool-framework</groupId>
-            <artifactId>mounter</artifactId>
+            <artifactId>infrastructure</artifactId>
             <version>1.0.0-SNAPSHOT</version>
-        </dependency>
-        <dependency>
-            <groupId>com.mysql</groupId>
-            <artifactId>mysql-connector-j</artifactId>
-            <version>8.3.0</version> <!-- Puedes usar la última versión disponible -->
         </dependency>
     </dependencies>
 </project>

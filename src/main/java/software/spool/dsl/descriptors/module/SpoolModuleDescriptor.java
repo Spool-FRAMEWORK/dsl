@@ -1,7 +1,7 @@
 package software.spool.dsl.descriptors.module;
 
 import software.spool.dsl.descriptors.module.crawler.CrawlerDescriptor;
-import software.spool.dsl.descriptors.module.feeder.FeederDescriptor;
+import software.spool.dsl.descriptors.module.feeder.JanitorDescriptor;
 import software.spool.dsl.descriptors.module.ingester.IngesterDescriptor;
 
 import java.lang.reflect.RecordComponent;
@@ -9,7 +9,7 @@ import java.util.Arrays;
 
 public record SpoolModuleDescriptor(
         CrawlerDescriptor crawler,
-        FeederDescriptor feeder,
+        JanitorDescriptor janitor,
         IngesterDescriptor ingester
 ) {
     public SpoolModuleType type() {
