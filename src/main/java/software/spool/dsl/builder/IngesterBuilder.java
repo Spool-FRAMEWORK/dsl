@@ -1,6 +1,8 @@
 package software.spool.dsl.builder;
 
+import software.spool.core.adapter.otel.OpenTelemetryTracedEventBus;
 import software.spool.core.port.bus.EventBus;
+import software.spool.core.port.decorator.TraceEventPublisher;
 import software.spool.dsl.descriptors.infrastructure.DataLakeDescriptor;
 import software.spool.dsl.descriptors.infrastructure.EventBusDescriptor;
 import software.spool.dsl.descriptors.infrastructure.InboxDescriptor;
@@ -34,7 +36,7 @@ public class IngesterBuilder {
                 .storesWith(PluginRegistry.resolve(DataLakeWriterProvider.class, buildDataLakeConfigurationFrom(infrastructure.dataLake())))
                 .readWith(PluginRegistry.resolve(InboxReaderProvider.class, buildInboxConfigurationFrom(infrastructure.inbox())))
                 .quarantineStore(System.out::println)
-                .on(eventBus)
+                .on(TraceEventPublisher.of(eventBus).with(new OpenTelemetryTracedEventBus()))
                 .create();
     }
 
@@ -45,7 +47,7 @@ public class IngesterBuilder {
                 .storesWith(PluginRegistry.resolve(DataLakeWriterProvider.class, buildDataLakeConfigurationFrom(infrastructure.dataLake())))
                 .readWith(PluginRegistry.resolve(InboxReaderProvider.class, buildInboxConfigurationFrom(infrastructure.inbox())))
                 .quarantineStore(System.out::println)
-                .on(eventBus)
+                .on(TraceEventPublisher.of(eventBus).with(new OpenTelemetryTracedEventBus()))
                 .create();
     }
 

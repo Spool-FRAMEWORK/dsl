@@ -1,5 +1,7 @@
 package software.spool.dsl.builder;
 
+import software.spool.core.adapter.otel.OpenTelemetryTracedEventBus;
+import software.spool.core.port.decorator.TraceEventPublisher;
 import software.spool.dsl.descriptors.infrastructure.EventBusDescriptor;
 import software.spool.dsl.descriptors.infrastructure.InboxDescriptor;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
@@ -22,7 +24,7 @@ public class JanitorBuilder {
         return configuration.polling()
                 .every(Duration.ofSeconds(feeder.poll().every()))
                 .from(PluginRegistry.resolve(InboxReaderProvider.class, buildInboxConfigurationFrom(infrastructure.inbox())))
-                .on(PluginRegistry.resolve(EventBusProvider.class, buildBusConfigurationFrom(infrastructure.eventBus())))
+                .on(TraceEventPublisher.of(PluginRegistry.resolve(EventBusProvider.class, buildBusConfigurationFrom(infrastructure.eventBus()))).with(new OpenTelemetryTracedEventBus()))
                 .with(PluginRegistry.resolve(InboxUpdaterProvider.class, buildInboxConfigurationFrom(infrastructure.inbox())))
                 .removeWith(PluginRegistry.resolve(InboxEnvelopeRemoverProvider.class, buildInboxConfigurationFrom(infrastructure.inbox())))
                 .subscribeWith(PluginRegistry.resolve(EventBusProvider.class, buildBusConfigurationFrom(infrastructure.eventBus())))

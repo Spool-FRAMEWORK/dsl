@@ -3,7 +3,6 @@ package software.spool.dsl.builder;
 import software.spool.core.adapter.otel.OpenTelemetryTracedEventBus;
 import software.spool.core.port.decorator.TraceEventPublisher;
 import software.spool.core.port.serde.NamingConvention;
-import software.spool.core.port.tracing.TracedEventBus;
 import software.spool.core.utils.polling.PollingConfiguration;
 import software.spool.crawler.api.Crawler;
 import software.spool.crawler.api.builder.CrawlerBuilderFactory;
