@@ -16,21 +16,21 @@ import java.util.List;
 import java.util.Objects;
 
 public abstract class SpoolNodeDSL {
-    public static void fromDescriptor(String path) throws IOException {
+    public static SpoolNode fromDescriptor(String path) throws IOException {
         try(BufferedInputStream is = new BufferedInputStream(
                 Objects.requireNonNull(Main.class.getResourceAsStream(path)))) {
-            fromDescriptor(PayloadDeserializerFactory.yaml().as(SpoolNodeDescriptor.class)
+            return fromDescriptor(PayloadDeserializerFactory.yaml().as(SpoolNodeDescriptor.class)
                     .deserialize(new String(is.readAllBytes())));
         } catch (Exception e) {
             throw new IOException(e);
         }
     }
 
-    public static void fromDescriptor(SpoolNodeDescriptor descriptor) throws IOException {
+    public static SpoolNode fromDescriptor(SpoolNodeDescriptor descriptor) throws IOException {
         SpoolNode node = SpoolNode.create();
         buildModulesFrom(descriptor.modules(), descriptor.infrastructure())
                 .forEach(node::register);
-        node.start();
+        return node;
     }
 
     private static List<SpoolModule> buildModulesFrom(
