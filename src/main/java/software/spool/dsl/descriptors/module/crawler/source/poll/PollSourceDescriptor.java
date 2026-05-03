@@ -32,6 +32,6 @@ public record PollSourceDescriptor(
 
     public record Http(String url) {}
     public record File(String path) {}
-    public record DataBase(String type, String host, String database, String user, String password) {}
+    public record DataBase(String type, String host, String database, String user, String password, String query) {}
     public record Custom(String pluginName, Map<String, String> configuration) {}
 }
