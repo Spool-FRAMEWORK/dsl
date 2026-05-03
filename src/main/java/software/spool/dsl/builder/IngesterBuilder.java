@@ -31,6 +31,7 @@ public class IngesterBuilder {
     private static Ingester buildBufferedIngesterFrom(IngesterDescriptor ingester, InfrastructureDescriptor infrastructure, IngesterBuilderFactory.Configuration configuration) {
         EventBus eventBus = buildEventBusFrom(infrastructure);
         return configuration.buffered()
+                .readWith(PluginRegistry.resolve(InboxUpdaterProvider.class, buildInboxConfigurationFrom(infrastructure.inbox())))
                 .from(eventBus)
                 .flushPolicy(buildFlushPolicyFrom(ingester.flush()))
                 .storesWith(PluginRegistry.resolve(DataLakeWriterProvider.class, buildDataLakeConfigurationFrom(infrastructure.dataLake())))
@@ -43,6 +44,7 @@ public class IngesterBuilder {
     private static Ingester buildReactiveIngesterFrom(IngesterDescriptor ingester, InfrastructureDescriptor infrastructure, IngesterBuilderFactory.Configuration configuration) {
         EventBus eventBus = buildEventBusFrom(infrastructure);
         return configuration.reactive()
+                .readWith(PluginRegistry.resolve(InboxUpdaterProvider.class, buildInboxConfigurationFrom(infrastructure.inbox())))
                 .from(eventBus)
                 .storesWith(PluginRegistry.resolve(DataLakeWriterProvider.class, buildDataLakeConfigurationFrom(infrastructure.dataLake())))
                 .readWith(PluginRegistry.resolve(InboxReaderProvider.class, buildInboxConfigurationFrom(infrastructure.inbox())))

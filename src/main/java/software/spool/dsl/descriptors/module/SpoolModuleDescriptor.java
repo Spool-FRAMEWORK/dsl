@@ -1,7 +1,7 @@
 package software.spool.dsl.descriptors.module;
 
 import software.spool.dsl.descriptors.module.crawler.CrawlerDescriptor;
-import software.spool.dsl.descriptors.module.feeder.JanitorDescriptor;
+import software.spool.dsl.descriptors.module.janitor.JanitorDescriptor;
 import software.spool.dsl.descriptors.module.ingester.IngesterDescriptor;
 
 import java.lang.reflect.RecordComponent;

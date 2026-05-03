@@ -5,24 +5,24 @@ import software.spool.core.port.decorator.TraceEventPublisher;
 import software.spool.dsl.descriptors.infrastructure.EventBusDescriptor;
 import software.spool.dsl.descriptors.infrastructure.InboxDescriptor;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
-import software.spool.dsl.descriptors.module.feeder.JanitorDescriptor;
-import software.spool.feeder.api.Janitor;
-import software.spool.feeder.api.builder.JanitorBuilderFactory;
+import software.spool.dsl.descriptors.module.janitor.JanitorDescriptor;
+import software.spool.janitor.api.Janitor;
+import software.spool.janitor.api.builder.JanitorBuilderFactory;
 import software.spool.infrastructure.PluginRegistry;
 import software.spool.infrastructure.spi.provider.*;
 
 import java.time.Duration;
 
 public class JanitorBuilder {
-    public static Janitor buildFrom(JanitorDescriptor feeder, InfrastructureDescriptor infrastructure) {
+    public static Janitor buildFrom(JanitorDescriptor janitor, InfrastructureDescriptor infrastructure) {
         JanitorBuilderFactory.Configuration configuration = JanitorBuilderFactory.watchdog(
-                infrastructure.watchdog().url(), feeder.id());
-        return buildPollingFeederFrom(feeder, infrastructure, configuration);
+                infrastructure.watchdog().url(), janitor.id());
+        return buildPollingFeederFrom(janitor, infrastructure, configuration);
     }
 
-    private static Janitor buildPollingFeederFrom(JanitorDescriptor feeder, InfrastructureDescriptor infrastructure, JanitorBuilderFactory.Configuration configuration) {
+    private static Janitor buildPollingFeederFrom(JanitorDescriptor janitor, InfrastructureDescriptor infrastructure, JanitorBuilderFactory.Configuration configuration) {
         return configuration.polling()
-                .every(Duration.ofSeconds(feeder.poll().every()))
+                .every(Duration.ofMillis(janitor.everyMilliseconds()))
                 .from(PluginRegistry.resolve(InboxReaderProvider.class, buildInboxConfigurationFrom(infrastructure.inbox())))
                 .on(TraceEventPublisher.of(PluginRegistry.resolve(EventBusProvider.class, buildBusConfigurationFrom(infrastructure.eventBus()))).with(new OpenTelemetryTracedEventBus()))
                 .with(PluginRegistry.resolve(InboxUpdaterProvider.class, buildInboxConfigurationFrom(infrastructure.inbox())))
