@@ -18,13 +18,16 @@ import software.spool.dsl.descriptors.module.crawler.CrawlerDescriptor;
 import software.spool.dsl.descriptors.module.crawler.EventMappingDescriptor;
 import software.spool.dsl.descriptors.module.crawler.PartitionAttributeDescriptor;
 import software.spool.dsl.descriptors.module.crawler.source.SourceDescriptor;
+import software.spool.dsl.descriptors.module.crawler.source.poll.PollSourceType;
 import software.spool.dsl.descriptors.module.crawler.source.poll.ScheduleDescriptor;
 import software.spool.infrastructure.PluginRegistry;
 import software.spool.infrastructure.spi.provider.EventBusProvider;
 import software.spool.infrastructure.spi.provider.InboxWriterProvider;
 import software.spool.infrastructure.spi.provider.PluginConfiguration;
+import software.spool.infrastructure.spi.provider.PollSourceProvider;
 
 import java.time.Duration;
+import java.util.Map;
 
 public class CrawlerBuilder {
     public static Crawler buildFrom(CrawlerDescriptor crawler, InfrastructureDescriptor infrastructure) {
@@ -40,7 +43,16 @@ public class CrawlerBuilder {
     };
 
     private static PollSource<?> buildPollSourceFrom(SourceDescriptor sourceDescriptor) {
-        return SourceFactory.pollFrom(sourceDescriptor);
+        return sourceDescriptor.poll().type() == PollSourceType.CUSTOM ?
+                PluginRegistry.get(PollSourceProvider.class, sourceDescriptor.poll().custom().pluginName())
+                                .create(buildConfigurationFrom(sourceDescriptor.poll().custom().configuration())) :
+                SourceFactory.pollFrom(sourceDescriptor);
+    }
+
+    private static PluginConfiguration buildConfigurationFrom(Map<String, String> configuration) {
+        PluginConfiguration.Builder builder = PluginConfiguration.builder();
+        configuration.forEach(builder::with);
+        return builder.build();
     }
 
     private static PollingConfiguration buildScheduleFrom(ScheduleDescriptor scheduleDescriptor) {

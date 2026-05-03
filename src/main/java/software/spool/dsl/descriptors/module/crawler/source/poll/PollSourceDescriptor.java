@@ -2,11 +2,13 @@ package software.spool.dsl.descriptors.module.crawler.source.poll;
 
 import java.lang.reflect.RecordComponent;
 import java.util.Arrays;
+import java.util.Map;
 
 public record PollSourceDescriptor(
         Http http,
         File file,
         DataBase database,
+        Custom custom,
         ScheduleDescriptor schedule
         ) {
     public PollSourceType type() {
@@ -28,7 +30,8 @@ public record PollSourceDescriptor(
         }
     }
 
-    public static record Http(String url) {}
-    public static record File(String path) {}
-    public static record DataBase(String type, String host, String database, String user, String password) {}
+    public record Http(String url) {}
+    public record File(String path) {}
+    public record DataBase(String type, String host, String database, String user, String password) {}
+    public record Custom(String pluginName, Map<String, String> configuration) {}
 }

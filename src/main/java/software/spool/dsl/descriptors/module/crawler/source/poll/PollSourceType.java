@@ -5,7 +5,8 @@ import java.util.Arrays;
 public enum PollSourceType {
     HTTP("http"),
     DATABASE("database"),
-    FILE("file");
+    FILE("file"),
+    CUSTOM("custom");
 
     private final String fieldName;
 

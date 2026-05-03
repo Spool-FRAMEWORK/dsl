@@ -18,6 +18,7 @@ public class SourceFactory {
             case HTTP -> new HTTPPollSource(descriptor.poll().http().url(), descriptor.id());
             case DATABASE -> null;
             case FILE -> null;
+            case CUSTOM -> null;
         };
     }
 
