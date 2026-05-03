@@ -2,6 +2,7 @@ package software.spool.dsl.descriptors.infrastructure;
 
 import java.lang.reflect.RecordComponent;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Stream;
 
@@ -34,8 +35,8 @@ public record InboxDescriptor(
         }
     }
 
-    public static record InMemory() {}
-    public static record Sql(String type, String host, String database, String user, String password) {}
-    public static record S3(String bucket, String region, String endpoint) {}
-    public static record Custom(String implementationClass) {}
+    public record InMemory() {}
+    public record Sql(String type, String host, String database, String user, String password) {}
+    public record S3(String bucket, String region, String endpoint) {}
+    public record Custom(String pluginName, Map<String, String> configuration) {}
 }
