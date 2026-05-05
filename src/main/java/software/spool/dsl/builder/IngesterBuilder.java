@@ -58,7 +58,7 @@ public class IngesterBuilder {
     }
 
     private static FlushPolicy buildFlushPolicyFrom(FlushIngesterDescriptor flush) {
-        return FlushPolicy.whenReaches(flush.size()).orEvery(Duration.ofSeconds(flush.every()));
+        return FlushPolicy.whenReaches(flush.size()).orEvery(Duration.ofMillis(flush.everyMilliseconds()));
     }
 
     private static PluginConfiguration buildDataLakeConfigurationFrom(DataLakeDescriptor inboxDescriptor) {
