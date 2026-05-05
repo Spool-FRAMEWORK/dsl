@@ -20,7 +20,7 @@ import software.spool.dsl.descriptors.module.crawler.PartitionAttributeDescripto
 import software.spool.dsl.descriptors.module.crawler.source.SourceDescriptor;
 import software.spool.dsl.descriptors.module.crawler.source.poll.PollSourceType;
 import software.spool.dsl.descriptors.module.crawler.source.poll.ScheduleDescriptor;
-import software.spool.infrastructure.PluginRegistry;
+import software.spool.infrastructure.PluginResolver;
 import software.spool.infrastructure.spi.provider.EventBusProvider;
 import software.spool.infrastructure.spi.provider.InboxWriterProvider;
 import software.spool.infrastructure.spi.provider.PluginConfiguration;
@@ -44,12 +44,14 @@ public class CrawlerBuilder {
 
     private static PollSource<?> buildPollSourceFrom(SourceDescriptor sourceDescriptor) {
         return sourceDescriptor.poll().type() == PollSourceType.CUSTOM ?
-                PluginRegistry.get(PollSourceProvider.class, sourceDescriptor.poll().custom().pluginName())
-                                .create(buildConfigurationFrom(sourceDescriptor.poll().custom().configuration())) :
+                PluginResolver.get(PollSourceProvider.class, sourceDescriptor.poll().custom().pluginName())
+                                .create(buildConfigurationFrom(sourceDescriptor)) :
                 SourceFactory.pollFrom(sourceDescriptor);
     }
 
-    private static PluginConfiguration buildConfigurationFrom(Map<String, String> configuration) {
+    private static PluginConfiguration buildConfigurationFrom(SourceDescriptor sourceDescriptor) {
+        Map<String, String> configuration = sourceDescriptor.poll().custom().configuration();
+        configuration.put("sourceId", sourceDescriptor.id());
         PluginConfiguration.Builder builder = PluginConfiguration.builder();
         configuration.forEach(builder::with);
         return builder.build();
@@ -68,8 +70,8 @@ public class CrawlerBuilder {
 
     private static CrawlerPorts buildPortsFrom(InfrastructureDescriptor infrastructure) {
         return CrawlerPorts.builder()
-                .bus(TraceEventPublisher.of(PluginRegistry.resolve(EventBusProvider.class, buildBusConfigurationFrom(infrastructure.eventBus()))).with(new OpenTelemetryTracedEventBus()))
-                .inbox(PluginRegistry.resolve(InboxWriterProvider.class, buildInboxConfigurationFrom(infrastructure.inbox())))
+                .bus(TraceEventPublisher.of(PluginResolver.resolve(EventBusProvider.class, buildBusConfigurationFrom(infrastructure.eventBus()))).with(new OpenTelemetryTracedEventBus()))
+                .inbox(PluginResolver.resolve(InboxWriterProvider.class, buildInboxConfigurationFrom(infrastructure.inbox())))
                 .build();
     }
 

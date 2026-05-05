@@ -6,9 +6,9 @@ import software.spool.dsl.descriptors.infrastructure.EventBusDescriptor;
 import software.spool.dsl.descriptors.infrastructure.InboxDescriptor;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
 import software.spool.dsl.descriptors.module.janitor.JanitorDescriptor;
+import software.spool.infrastructure.PluginResolver;
 import software.spool.janitor.api.Janitor;
 import software.spool.janitor.api.builder.JanitorBuilderFactory;
-import software.spool.infrastructure.PluginRegistry;
 import software.spool.infrastructure.spi.provider.*;
 
 import java.time.Duration;
@@ -23,11 +23,11 @@ public class JanitorBuilder {
     private static Janitor buildPollingFeederFrom(JanitorDescriptor janitor, InfrastructureDescriptor infrastructure, JanitorBuilderFactory.Configuration configuration) {
         return configuration.polling()
                 .every(Duration.ofMillis(janitor.everyMilliseconds()))
-                .from(PluginRegistry.resolve(InboxReaderProvider.class, buildInboxConfigurationFrom(infrastructure.inbox())))
-                .on(TraceEventPublisher.of(PluginRegistry.resolve(EventBusProvider.class, buildBusConfigurationFrom(infrastructure.eventBus()))).with(new OpenTelemetryTracedEventBus()))
-                .with(PluginRegistry.resolve(InboxUpdaterProvider.class, buildInboxConfigurationFrom(infrastructure.inbox())))
-                .removeWith(PluginRegistry.resolve(InboxEnvelopeRemoverProvider.class, buildInboxConfigurationFrom(infrastructure.inbox())))
-                .subscribeWith(PluginRegistry.resolve(EventBusProvider.class, buildBusConfigurationFrom(infrastructure.eventBus())))
+                .from(PluginResolver.resolve(InboxReaderProvider.class, buildInboxConfigurationFrom(infrastructure.inbox())))
+                .on(TraceEventPublisher.of(PluginResolver.resolve(EventBusProvider.class, buildBusConfigurationFrom(infrastructure.eventBus()))).with(new OpenTelemetryTracedEventBus()))
+                .with(PluginResolver.resolve(InboxUpdaterProvider.class, buildInboxConfigurationFrom(infrastructure.inbox())))
+                .removeWith(PluginResolver.resolve(InboxEnvelopeRemoverProvider.class, buildInboxConfigurationFrom(infrastructure.inbox())))
+                .subscribeWith(PluginResolver.resolve(EventBusProvider.class, buildBusConfigurationFrom(infrastructure.eventBus())))
                 .create();
     }
 
