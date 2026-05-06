@@ -6,8 +6,8 @@ public record EventBusDescriptor(
         EventBusType type,
         String url
 ) {
-    public static enum EventBusType {
-        IN_MEMORY("inMemory"),
+    public enum EventBusType {
+        IN_MEMORY("in_Memory"),
         KAFKA("kafka");
 
         private final String value;

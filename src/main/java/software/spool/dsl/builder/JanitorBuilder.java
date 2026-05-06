@@ -28,6 +28,8 @@ public class JanitorBuilder {
                 .with(PluginResolver.resolve(InboxUpdaterProvider.class, buildInboxConfigurationFrom(infrastructure.inbox())))
                 .removeWith(PluginResolver.resolve(InboxEnvelopeRemoverProvider.class, buildInboxConfigurationFrom(infrastructure.inbox())))
                 .subscribeWith(PluginResolver.resolve(EventBusProvider.class, buildBusConfigurationFrom(infrastructure.eventBus())))
+                .withMillisecondsThreshold(janitor.millisecondsThreshold())
+                .withMillisecondsTtl(janitor.millisecondsTtl())
                 .create();
     }
 
