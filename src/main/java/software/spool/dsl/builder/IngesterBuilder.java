@@ -3,19 +3,19 @@ package software.spool.dsl.builder;
 import software.spool.core.adapter.otel.OpenTelemetryTracedEventBus;
 import software.spool.core.port.bus.EventBus;
 import software.spool.core.port.decorator.TraceEventPublisher;
-import software.spool.dsl.descriptors.infrastructure.DataLakeDescriptor;
-import software.spool.dsl.descriptors.infrastructure.EventBusDescriptor;
-import software.spool.dsl.descriptors.infrastructure.InboxDescriptor;
-import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
+import software.spool.core.port.inbox.InboxReader;
+import software.spool.dsl.descriptors.infrastructure.*;
 import software.spool.dsl.descriptors.module.ingester.FlushIngesterDescriptor;
 import software.spool.dsl.descriptors.module.ingester.IngesterDescriptor;
 import software.spool.infrastructure.PluginResolver;
 import software.spool.infrastructure.spi.provider.*;
 import software.spool.ingester.api.Ingester;
 import software.spool.ingester.api.builder.IngesterBuilderFactory;
+import software.spool.ingester.api.port.DataLakeWriter;
 import software.spool.ingester.internal.utils.FlushPolicy;
 
 import java.time.Duration;
+import java.util.Map;
 import java.util.Objects;
 
 public class IngesterBuilder {
@@ -31,14 +31,35 @@ public class IngesterBuilder {
     private static Ingester buildBufferedIngesterFrom(IngesterDescriptor ingester, InfrastructureDescriptor infrastructure, IngesterBuilderFactory.Configuration configuration) {
         EventBus eventBus = buildEventBusFrom(infrastructure);
         return configuration.buffered()
-                .readWith(PluginResolver.resolve(InboxUpdaterProvider.class, buildInboxConfigurationFrom(infrastructure.inbox())))
                 .from(eventBus)
                 .flushPolicy(buildFlushPolicyFrom(ingester.flush()))
-                .storesWith(PluginResolver.resolve(DataLakeWriterProvider.class, buildDataLakeConfigurationFrom(infrastructure.dataLake())))
-                .readWith(PluginResolver.resolve(InboxReaderProvider.class, buildInboxConfigurationFrom(infrastructure.inbox())))
+                .storesWith(getDataLakePluginFrom(infrastructure))
+                .readWith(getInboxReaderPluginFrom(infrastructure))
                 .quarantineStore(System.out::println)
                 .on(TraceEventPublisher.of(eventBus).with(new OpenTelemetryTracedEventBus()))
                 .create();
+    }
+
+    private static InboxReader getInboxReaderPluginFrom(InfrastructureDescriptor infrastructure) {
+        return infrastructure.inbox().type() != InboxType.CUSTOM ?
+                PluginResolver.get(InboxReaderProvider.class, infrastructure.inbox().type().name().toUpperCase())
+                        .create(buildInboxConfigurationFrom(infrastructure.inbox())) :
+                PluginResolver.get(InboxReaderProvider.class, infrastructure.inbox().custom().pluginName())
+                        .create(buildConfigurationFrom(infrastructure.inbox().custom().configuration()));
+    }
+
+    private static DataLakeWriter getDataLakePluginFrom(InfrastructureDescriptor infrastructure) {
+        return infrastructure.dataLake().type() != DataLakeType.CUSTOM ?
+                PluginResolver.get(DataLakeWriterProvider.class, infrastructure.dataLake().type().name().toUpperCase())
+                        .create(buildDataLakeConfigurationFrom(infrastructure.dataLake())) :
+                PluginResolver.get(DataLakeWriterProvider.class, infrastructure.dataLake().custom().pluginName())
+                        .create(buildConfigurationFrom(infrastructure.dataLake().custom().configuration()));
+    }
+
+    private static PluginConfiguration buildConfigurationFrom(Map<String, String> configuration) {
+        PluginConfiguration.Builder builder = PluginConfiguration.builder();
+        configuration.forEach(builder::with);
+        return builder.build();
     }
 
     private static Ingester buildReactiveIngesterFrom(IngesterDescriptor ingester, InfrastructureDescriptor infrastructure, IngesterBuilderFactory.Configuration configuration) {
@@ -46,15 +67,15 @@ public class IngesterBuilder {
         return configuration.reactive()
                 .readWith(PluginResolver.resolve(InboxUpdaterProvider.class, buildInboxConfigurationFrom(infrastructure.inbox())))
                 .from(eventBus)
-                .storesWith(PluginResolver.resolve(DataLakeWriterProvider.class, buildDataLakeConfigurationFrom(infrastructure.dataLake())))
-                .readWith(PluginResolver.resolve(InboxReaderProvider.class, buildInboxConfigurationFrom(infrastructure.inbox())))
+                .storesWith(getDataLakePluginFrom(infrastructure))
+                .readWith(getInboxReaderPluginFrom(infrastructure))
                 .quarantineStore(System.out::println)
                 .on(TraceEventPublisher.of(eventBus).with(new OpenTelemetryTracedEventBus()))
                 .create();
     }
 
     private static EventBus buildEventBusFrom(InfrastructureDescriptor infrastructure) {
-        return PluginResolver.resolve(EventBusProvider.class, buildBusConfigurationFrom(infrastructure.eventBus()));
+        return PluginResolver.get(EventBusProvider.class, infrastructure.eventBus().type().name().toUpperCase()).create(buildBusConfigurationFrom(infrastructure.eventBus()));
     }
 
     private static FlushPolicy buildFlushPolicyFrom(FlushIngesterDescriptor flush) {
