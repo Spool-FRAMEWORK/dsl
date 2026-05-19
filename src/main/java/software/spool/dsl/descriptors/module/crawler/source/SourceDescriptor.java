@@ -1,6 +1,5 @@
 package software.spool.dsl.descriptors.module.crawler.source;
 
-import software.spool.core.model.vo.MediaType;
 import software.spool.core.port.serde.EnrichmentRule;
 import software.spool.crawler.api.utils.StandardNormalizer;
 import software.spool.dsl.descriptors.module.crawler.source.poll.PollSourceDescriptor;
@@ -13,7 +12,7 @@ public record SourceDescriptor(
     String id,
     StandardNormalizer.Format format,
     String rootPath,
-    MediaType mediaType,
+    String mediaType,
     List<EnrichmentRule> enrichment,
     PollSourceDescriptor poll
 ) {
@@ -21,7 +20,7 @@ public record SourceDescriptor(
         String fieldName = Arrays.stream(getClass().getRecordComponents())
                 .filter(component -> valueOf(component) != null)
                 .map(RecordComponent::getName)
-                .filter(name -> !name.startsWith("id") && !name.startsWith("format") && !name.startsWith("rootPath") && !name.startsWith("enrichment"))
+                .filter(name -> !name.startsWith("mediaType") && !name.startsWith("id") && !name.startsWith("format") && !name.startsWith("rootPath") && !name.startsWith("enrichment"))
                 .findFirst()
                 .orElseThrow();
         return SourceType.fromFieldName(fieldName);
