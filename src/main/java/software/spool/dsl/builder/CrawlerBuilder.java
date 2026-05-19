@@ -1,12 +1,12 @@
 package software.spool.dsl.builder;
 
 import software.spool.core.adapter.otel.OpenTelemetryTracedEventBus;
+import software.spool.core.port.bus.EventPublisher;
 import software.spool.core.port.decorator.TraceEventPublisher;
 import software.spool.core.port.serde.NamingConvention;
 import software.spool.core.utils.polling.PollingConfiguration;
 import software.spool.crawler.api.Crawler;
 import software.spool.crawler.api.builder.CrawlerBuilderFactory;
-import software.spool.crawler.api.builder.EventMappingSpecification;
 import software.spool.crawler.api.port.InboxWriter;
 import software.spool.crawler.api.port.source.PollSource;
 import software.spool.crawler.api.utils.CrawlerPorts;
@@ -32,73 +32,87 @@ import java.time.Duration;
 import java.util.Map;
 
 public class CrawlerBuilder {
+
     public static Crawler buildFrom(CrawlerDescriptor crawler, InfrastructureDescriptor infrastructure) {
-        return CrawlerBuilderFactory.watchdog(infrastructure.watchdog().url(), crawler.id())
-                .poll(buildPollSourceFrom(crawler.source()))
-                .schedule(buildScheduleFrom(crawler.source().poll().schedule()))
-                .ports(buildPortsFrom(infrastructure))
-                .eventMapping(buildEventMappingFrom(crawler.eventMapping()))
+        SourceDescriptor source = crawler.source();
+        return CrawlerBuilderFactory.watchdog(infrastructure.watchdog().url(), crawler.id()).poll(buildPollSourceFrom(source))
+                .source()
+                    .schedule(buildScheduleFrom(source.poll().schedule()))
+                    .ports(buildPortsFrom(infrastructure))
+                    .enrichRules(source.enrichment())
+                    .rootPath(source.rootPath())
+                    .mediaType(source.mediaType())
+                    .and()
+                .mapping()
+                    .convention(NamingConvention.SNAKE_CASE)
+                    .addPartitionAttributes(toPartitionAttributeArray(crawler.eventMapping()))
+                    .and()
                 .createWith(new StandardNormalizer.Builder()
-                        .rootPath(crawler.source().rootPath())
-                        .enrichRules(crawler.source().enrichment())
-                        .valueOf(crawler.source().format()));
-    };
-
-    private static PollSource<?> buildPollSourceFrom(SourceDescriptor sourceDescriptor) {
-        return sourceDescriptor.poll().type() == PollSourceType.CUSTOM ?
-                PluginResolver.get(PollSourceProvider.class, sourceDescriptor.poll().custom().pluginName())
-                                .create(buildConfigurationFrom(sourceDescriptor)) :
-                SourceFactory.pollFrom(sourceDescriptor);
+                        .rootPath(source.rootPath())
+                        .enrichRules(source.enrichment())
+                        .valueOf(source.format()));
     }
 
-    private static PluginConfiguration buildConfigurationFrom(SourceDescriptor sourceDescriptor) {
-        Map<String, String> configuration = sourceDescriptor.poll().custom().configuration();
-        configuration.put("sourceId", sourceDescriptor.id());
-        return buildConfigurationFrom(configuration);
+    private static PollSource<?> buildPollSourceFrom(SourceDescriptor source) {
+        if (source.poll().type() == PollSourceType.CUSTOM) {
+            return PluginResolver.get(PollSourceProvider.class, source.poll().custom().pluginName())
+                    .create(buildCustomSourceConfiguration(source));
+        }
+        return SourceFactory.pollFrom(source);
     }
 
-    private static PluginConfiguration buildConfigurationFrom(Map<String, String> configuration) {
+    private static PluginConfiguration buildCustomSourceConfiguration(SourceDescriptor source) {
+        Map<String, String> config = source.poll().custom().configuration();
+        config.put("sourceId", source.id());
+        return toPluginConfiguration(config);
+    }
+
+    // --- Schedule ---
+
+    private static PollingConfiguration buildScheduleFrom(ScheduleDescriptor schedule) {
+        return schedule.everyMilliseconds() > 1000
+                ? PollingConfiguration.every(Duration.ofMillis(schedule.everyMilliseconds()))
+                : PollingConfiguration.once();
+    }
+
+    // --- Ports ---
+
+    private static CrawlerPorts buildPortsFrom(InfrastructureDescriptor infrastructure) {
+        return CrawlerPorts.builder()
+                .bus(buildTracedEventBus(infrastructure.eventBus()))
+                .inbox(buildInboxWriter(infrastructure.inbox()))
+                .build();
+    }
+
+    private static EventPublisher buildTracedEventBus(EventBusDescriptor eventBus) {
+        PluginConfiguration config = PluginConfiguration.builder()
+                .with("bootstrap.servers", eventBus.url())
+                .build();
+        return TraceEventPublisher.of(
+                PluginResolver.get(EventBusProvider.class, eventBus.type().name().toUpperCase())
+                        .create(config)
+        ).with(new OpenTelemetryTracedEventBus());
+    }
+
+    private static InboxWriter buildInboxWriter(InboxDescriptor inbox) {
+        String pluginName = inbox.type() == InboxType.CUSTOM
+                ? inbox.custom().pluginName()
+                : inbox.type().name().toUpperCase();
+        return PluginResolver.get(InboxWriterProvider.class, pluginName)
+                .create(toPluginConfiguration(inbox.custom().configuration()));
+    }
+
+    // --- Shared utility ---
+
+    private static PluginConfiguration toPluginConfiguration(Map<String, String> configuration) {
         PluginConfiguration.Builder builder = PluginConfiguration.builder();
         configuration.forEach(builder::with);
         return builder.build();
     }
 
-    private static PollingConfiguration buildScheduleFrom(ScheduleDescriptor scheduleDescriptor) {
-        return scheduleDescriptor.everyMilliseconds() > 1000 ? PollingConfiguration.every(Duration.ofMillis(scheduleDescriptor.everyMilliseconds())) :
-                PollingConfiguration.once();
-    }
-
-    private static EventMappingSpecification buildEventMappingFrom(EventMappingDescriptor eventMappingDescriptor) {
-        return new EventMappingSpecification(NamingConvention.SNAKE_CASE)
-                .addPartitionAttributes(eventMappingDescriptor.attributeList().stream()
-                        .map(PartitionAttributeDescriptor::value)
-                        .toArray(String[]::new));
-    }
-
-    private static CrawlerPorts buildPortsFrom(InfrastructureDescriptor infrastructure) {
-        return CrawlerPorts.builder()
-                .bus(TraceEventPublisher.of(PluginResolver.get(EventBusProvider.class, infrastructure.eventBus().type().name().toUpperCase()).create(buildBusConfigurationFrom(infrastructure.eventBus()))).with(new OpenTelemetryTracedEventBus()))
-                .inbox(getInboxPluginFrom(infrastructure.inbox()))
-                .build();
-    }
-
-    private static InboxWriter getInboxPluginFrom(InboxDescriptor inboxDescriptor) {
-        return inboxDescriptor.type() == InboxType.CUSTOM ?
-                PluginResolver.get(InboxWriterProvider.class, inboxDescriptor.custom().pluginName())
-                        .create(buildConfigurationFrom(inboxDescriptor.custom().configuration())) :
-                PluginResolver.get(InboxWriterProvider.class, inboxDescriptor.type().name().toUpperCase())
-                        .create(buildConfigurationFrom(inboxDescriptor.custom().configuration()));
-    }
-
-    private static PluginConfiguration buildInboxConfigurationFrom(InboxDescriptor inboxDescriptor) {
-        return PluginConfiguration.builder()
-                .with("endpoint", inboxDescriptor.s3().endpoint())
-                .with("region", inboxDescriptor.s3().region())
-                .with("bucket", inboxDescriptor.s3().bucket()).build();
-    }
-
-    private static PluginConfiguration buildBusConfigurationFrom(EventBusDescriptor eventBusDescriptor) {
-        return PluginConfiguration.builder()
-                .with("bootstrap.servers", eventBusDescriptor.url()).build();
+    private static String[] toPartitionAttributeArray(EventMappingDescriptor eventMapping) {
+        return eventMapping.attributeList().stream()
+                .map(PartitionAttributeDescriptor::value)
+                .toArray(String[]::new);
     }
 }

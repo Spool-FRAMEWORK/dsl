@@ -20,7 +20,7 @@ public abstract class SpoolNodeDSL {
         try(BufferedInputStream is = new BufferedInputStream(
                 Objects.requireNonNull(Main.class.getResourceAsStream(path)))) {
             return fromDescriptor(PayloadDeserializerFactory.yaml().as(SpoolNodeDescriptor.class)
-                    .deserialize(new String(is.readAllBytes())));
+                    .deserialize(is.readAllBytes()));
         } catch (Exception e) {
             throw new IOException(e);
         }

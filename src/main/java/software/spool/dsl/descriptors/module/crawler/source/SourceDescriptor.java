@@ -1,5 +1,6 @@
 package software.spool.dsl.descriptors.module.crawler.source;
 
+import software.spool.core.model.vo.MediaType;
 import software.spool.core.port.serde.EnrichmentRule;
 import software.spool.crawler.api.utils.StandardNormalizer;
 import software.spool.dsl.descriptors.module.crawler.source.poll.PollSourceDescriptor;
@@ -12,6 +13,7 @@ public record SourceDescriptor(
     String id,
     StandardNormalizer.Format format,
     String rootPath,
+    MediaType mediaType,
     List<EnrichmentRule> enrichment,
     PollSourceDescriptor poll
 ) {
