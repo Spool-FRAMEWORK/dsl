@@ -7,6 +7,7 @@ import software.spool.dsl.descriptors.module.crawler.source.poll.PollSourceDescr
 import java.lang.reflect.RecordComponent;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 public record SourceDescriptor(
     String id,
@@ -16,6 +17,15 @@ public record SourceDescriptor(
     List<EnrichmentRule> enrichment,
     PollSourceDescriptor poll
 ) {
+    public SourceDescriptor(String id, StandardNormalizer.Format format, String rootPath, String mediaType, List<EnrichmentRule> enrichment, PollSourceDescriptor poll) {
+        this.id = id;
+        this.format = format;
+        this.rootPath = rootPath;
+        this.mediaType = mediaType;
+        this.enrichment = Objects.requireNonNullElse(enrichment, List.of());
+        this.poll = poll;
+    }
+
     public SourceType type() {
         String fieldName = Arrays.stream(getClass().getRecordComponents())
                 .filter(component -> valueOf(component) != null)

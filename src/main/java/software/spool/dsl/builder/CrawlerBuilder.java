@@ -12,6 +12,7 @@ import software.spool.crawler.api.port.InboxWriter;
 import software.spool.crawler.api.port.source.PollSource;
 import software.spool.crawler.api.utils.CrawlerPorts;
 import software.spool.crawler.api.utils.StandardNormalizer;
+import software.spool.crawler.internal.utils.factory.Normalizer;
 import software.spool.dsl.SourceFactory;
 import software.spool.dsl.descriptors.infrastructure.EventBusDescriptor;
 import software.spool.dsl.descriptors.infrastructure.InboxDescriptor;
@@ -23,6 +24,9 @@ import software.spool.dsl.descriptors.module.crawler.source.poll.PollSourceType;
 import software.spool.dsl.descriptors.module.crawler.source.poll.ScheduleDescriptor;
 import software.spool.infrastructure.PluginResolver;
 import software.spool.infrastructure.spi.provider.*;
+import software.spool.infrastructure.spi.provider.bus.EventBusProvider;
+import software.spool.infrastructure.spi.provider.inbox.InboxWriterProvider;
+import software.spool.infrastructure.spi.provider.serde.NormalizerProvider;
 
 import java.time.Duration;
 import java.util.Map;
@@ -43,17 +47,22 @@ public class CrawlerBuilder {
                     .convention(NamingConvention.SNAKE_CASE)
                     .addPartitionAttributes(toPartitionAttributeArray(crawler.eventMapping()))
                     .and()
-                .createWith(new StandardNormalizer.Builder()
-                        .rootPath(source.rootPath())
-                        .enrichRules(source.enrichment())
-                        .valueOf(source.format()));
+                .createWith(PluginResolver.get(NormalizerProvider.class, source.mediaType().toUpperCase() + "_NORMALIZER")
+                        .create(PluginConfiguration.builder()
+                                .with("rules", source.enrichment().toString())
+                                .with("rootPath", source.rootPath())
+                                .build()));
     }
 
     private static PollSource<?> buildPollSourceFrom(SourceDescriptor source) {
         if (source.poll().type() == PollSourceType.CUSTOM)
             return PluginResolver.get(PollSourceProvider.class, source.poll().custom().pluginName())
                     .create(buildCustomSourceConfiguration(source));
-        return SourceFactory.pollFrom(source);
+        return PluginResolver.get(PollSourceProvider.class, source.poll().type().name().toUpperCase())
+                .create(PluginConfiguration.builder()
+                        .with("sourceId", source.id())
+                        .with("url", source.poll().http().url())
+                        .build());
     }
 
     private static PluginConfiguration buildCustomSourceConfiguration(SourceDescriptor source) {
