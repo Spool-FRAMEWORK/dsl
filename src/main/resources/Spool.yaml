@@ -15,7 +15,21 @@ infrastructure:
       path: "D:/spool/datalake"
 
 modules:
-
+  - crawler:
+      type: POLL
+      id: synthea-crawler
+      source:
+        type: HTTP
+        configuration:
+          sourceId: synthea-api
+          url: "http://plytrox.com:8000/events?limit=4"
+          scheduleMilliseconds: 30000
+        mediaType: JSON_ARRAY
+        rootPath: events
+      eventMapping:
+        namingConvention: SNAKE_CASE
+        domainMappingList:
+          - SyntheaReceived
 
   - crawler:
       type: STREAM
@@ -23,11 +37,8 @@ modules:
       source:
         type: IN_MEMORY
         configuration:
-          sourceId: synthea-api-broker
-          eventClassName: TestEvent
-          scheduleMilliseconds: 30000
+          sourceId: synthea-api-crawler
+          eventClassName: SyntheaReceived
         mediaType: EVENT_CLASS
       eventMapping:
-        domainMappingList:
-          - TimeStampEvent
         namingConvention: SNAKE_CASE
