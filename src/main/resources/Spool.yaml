@@ -1,147 +1,32 @@
 infrastructure:
-  watchdog:
-    url: "http://localhost:8090"
+  watchdog: "http://host.docker.internal:8090"
 
   eventBus:
-    type: "KAFKA"
-    url: "localhost:9092"
+    type: IN_MEMORY
 
   inbox:
-    s3:
-      bucket: spool-inbox
-      region: us-east-1
-      endpoint: http://host.docker.internal:4566
+    type: FILE_SYSTEM
+    configuration:
+      path: "D:/spool/inbox"
 
   dataLake:
-    s3:
-      bucket: spool-datalake
-      region: us-east-1
-      endpoint: http://host.docker.internal:4566
+    type: FILE_SYSTEM
+    configuration:
+      path: "D:/spool/datalake"
 
 modules:
   - crawler:
-      id: "msft-crawler"
+      type: POLL
+      id: synthea-crawler
       source:
-        id: "msft"
-        poll:
-          http:
-            url: "https://data.sec.gov/api/xbrl/companyfacts/CIK0000789019.json"
-          schedule:
-            every: 120
-            unit: "SECONDS"
-        format: JSON_ARRAY
-        rootPath: "facts.dei.EntityCommonStockSharesOutstanding.units.sharese"
-        enrichment:
-          - source: "entityName"
+        type: HTTP
+        configuration:
+          sourceId: synthea-api
+          url: "http://plytrox.com:8000/events?limit=10"
+          scheduleMilliseconds: 30000
+        mediaType: JSON_ARRAY
+        rootPath: events
       eventMapping:
-        namingConvention: "SNAKE_CASE"
+        namingConvention: SNAKE_CASE
         attributeList:
-          - value: "entityName"
-
-  - crawler:
-      id: "amzn-crawler"
-      source:
-        id: "amzn"
-        poll:
-          http:
-            url: "https://data.sec.gov/api/xbrl/companyfacts/CIK0001018724.json"
-          schedule:
-            every: 120
-            unit: "SECONDS"
-        format: JSON_ARRAY
-        rootPath: "facts.dei.EntityCommonStockSharesOutstanding.units.shares"
-        enrichment:
-          - source: "entityName"
-      eventMapping:
-        namingConvention: "SNAKE_CASE"
-        attributeList:
-          - value: "entityName"
-
-  - crawler:
-      id: "nvda-crawler"
-      source:
-        id: "nvda"
-        poll:
-          http:
-            url: "https://data.sec.gov/api/xbrl/companyfacts/CIK0001045810.json"
-          schedule:
-            every: 120
-            unit: "SECONDS"
-        format: JSON_ARRAY
-        rootPath: "facts.dei.EntityCommonStockSharesOutstanding.units.shares"
-        enrichment:
-          - source: "entityName"
-      eventMapping:
-        namingConvention: "SNAKE_CASE"
-        attributeList:
-          - value: "entityName"
-
-  - crawler:
-      id: "googl-crawler"
-      source:
-        id: "googl"
-        poll:
-          http:
-            url: "https://data.sec.gov/api/xbrl/companyfacts/CIK0001652044.json"
-          schedule:
-            every: 120
-            unit: "SECONDS"
-        format: JSON_ARRAY
-        rootPath: "facts.dei.EntityCommonStockSharesOutstanding.units.shares"
-        enrichment:
-          - source: "entityName"
-      eventMapping:
-        namingConvention: "SNAKE_CASE"
-        attributeList:
-          - value: "entityName"
-
-  - crawler:
-      id: "meta-crawler"
-      source:
-        id: "meta"
-        poll:
-          http:
-            url: "https://data.sec.gov/api/xbrl/companyfacts/CIK0001326801.json"
-          schedule:
-            every: 120
-            unit: "SECONDS"
-        format: JSON_ARRAY
-        rootPath: "facts.dei.EntityCommonStockSharesOutstanding.units.shares"
-        enrichment:
-          - source: "entityName"
-      eventMapping:
-        namingConvention: "SNAKE_CASE"
-        attributeList:
-          - value: "entityName"
-
-  - crawler:
-      id: "tsla-crawler"
-      source:
-        id: "tsla"
-        poll:
-          http:
-            url: "https://data.sec.gov/api/xbrl/companyfacts/CIK0001318605.json"
-          schedule:
-            every: 120
-            unit: "SECONDS"
-        format: JSON_ARRAY
-        rootPath: "facts.dei.EntityCommonStockSharesOutstanding.units.shares"
-        enrichment:
-          - source: "entityName"
-      eventMapping:
-        namingConvention: "SNAKE_CASE"
-        attributeList:
-          - value: "entityName"
-
-  - janitor:
-      id: "gemini-janitor"
-      poll:
-        every: 5
-        unit: "SECONDS"
-
-  - ingester:
-      id: "gemini-ingester"
-      flush:
-        size: 100
-        every: 5
-        unit: "SECONDS"
+          - _type

@@ -1,10 +1,14 @@
 package software.spool.dsl.descriptors.module.janitor;
 
+import software.spool.dsl.descriptors.module.SpoolModuleDescriptor;
+
+import java.util.Map;
+
 public record JanitorDescriptor(
         String id,
-        Integer workers,
-        Integer everyMilliseconds,
-        Integer millisecondsThreshold,
-        Integer millisecondsTtl
-) {
+        Map<String, String> configuration
+) implements SpoolModuleDescriptor {
+    @Override public String moduleType() {
+        return "JANITOR";
+    }
 }
