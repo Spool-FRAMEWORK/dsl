@@ -6,5 +6,6 @@ import java.util.List;
 
 public record EventMappingDescriptor(
         NamingConvention namingConvention,
+        List<String> domainMappingList,
         List<String> attributeList
 ) {}

@@ -28,4 +28,6 @@ modules:
           scheduleMilliseconds: 30000
         mediaType: EVENT_CLASS
       eventMapping:
+        domainMappingList:
+          - TimeStampEvent
         namingConvention: SNAKE_CASE

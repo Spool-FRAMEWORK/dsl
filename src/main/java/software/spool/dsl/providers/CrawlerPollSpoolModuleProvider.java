@@ -1,5 +1,6 @@
 package software.spool.dsl.providers;
 
+import software.spool.core.model.Event;
 import software.spool.core.model.spool.SpoolModule;
 import software.spool.core.utils.media.MediaTypeResolver;
 import software.spool.core.utils.polling.PollingConfiguration;
@@ -16,6 +17,7 @@ import software.spool.infrastructure.spi.provider.PluginConfiguration;
 import software.spool.infrastructure.spi.provider.PollSourceProvider;
 
 import java.time.Duration;
+import java.util.List;
 
 @SpoolPlugin(SpoolModuleProvider.class)
 public class CrawlerPollSpoolModuleProvider implements SpoolModuleProvider {
@@ -53,9 +55,26 @@ public class CrawlerPollSpoolModuleProvider implements SpoolModuleProvider {
                     .and()
                 .mapping()
                     .convention(crawler.eventMapping().namingConvention())
+                    .addDomainEvent(resolveEventClasses(crawler.eventMapping().domainMappingList()), crawler.eventMapping().attributeList().toArray(String[]::new))
                     .addPartitionAttributes(crawler.eventMapping().attributeList().toArray(String[]::new))
                     .and()
                 .createWith(objectNormalizer(source));
+    }
+
+    private List<Class<? extends Event>> resolveEventClasses(List<String> names) {
+        return names.stream()
+                .map(this::toClass)
+                .map(c -> (Class<? extends Event>) c)
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    @SuppressWarnings("unchecked")
+    private Class<? extends Event> toClass(String name) {
+        try {
+            return (Class<? extends Event>) Class.forName("events." + name);
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException("Failed to resolve event class: " + name, e);
+        }
     }
 
     @SuppressWarnings("unchecked")

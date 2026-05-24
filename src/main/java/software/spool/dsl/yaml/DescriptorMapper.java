@@ -21,7 +21,6 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 
 public final class DescriptorMapper {
-
     private DescriptorMapper() {}
 
     public static SpoolNodeDescriptor map(RawSpoolNodeDescriptor raw) {
@@ -89,8 +88,15 @@ public final class DescriptorMapper {
 
     @SuppressWarnings("unchecked")
     private static EventMappingDescriptor toEventMapping(Map<String, Object> raw) {
-        List<Object> rawList = (List<Object>) raw.getOrDefault("attributeList", List.of());
-        List<String> attributes = rawList.stream()
+        List<Object> rawAttributes = (List<Object>) raw.getOrDefault("attributeList", List.of());
+        List<String> attributes = rawAttributes.stream()
+                .map(entry -> entry instanceof Map<?, ?> m
+                        ? (String) m.get("value")
+                        : (String) entry)
+                .filter(Objects::nonNull)
+                .toList();
+        List<Object> rawDomainMappings = (List<Object>) raw.getOrDefault("domainMappingList", List.of());
+        List<String> domainMappings = rawDomainMappings.stream()
                 .map(entry -> entry instanceof Map<?, ?> m
                         ? (String) m.get("value")
                         : (String) entry)
@@ -98,6 +104,7 @@ public final class DescriptorMapper {
                 .toList();
         return new EventMappingDescriptor(
                 NamingConvention.valueOf((String) raw.get("namingConvention")),
+                domainMappings,
                 attributes
         );
     }
