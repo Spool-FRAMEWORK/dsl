@@ -1,27 +1,31 @@
-package software.spool.dsl.providers;
+package software.spool.dsl.providers.crawler;
 
 import software.spool.core.model.Event;
 import software.spool.core.model.spool.SpoolModule;
 import software.spool.core.utils.media.MediaTypeResolver;
+import software.spool.core.utils.polling.PollingConfiguration;
 import software.spool.crawler.api.builder.CrawlerBuilderFactory;
-import software.spool.crawler.api.port.source.StreamSource;
+import software.spool.crawler.api.port.source.PollSource;
 import software.spool.crawler.internal.utils.factory.Normalizer;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
 import software.spool.dsl.descriptors.module.SpoolModuleDescriptor;
 import software.spool.dsl.descriptors.module.crawler.CrawlerDescriptor;
 import software.spool.dsl.descriptors.module.crawler.source.SourceDescriptor;
+import software.spool.dsl.providers.InfrastructurePluginFactory;
+import software.spool.dsl.providers.SpoolModuleProvider;
 import software.spool.infrastructure.PluginResolver;
 import software.spool.infrastructure.spi.SpoolPlugin;
 import software.spool.infrastructure.spi.provider.PluginConfiguration;
-import software.spool.infrastructure.spi.provider.StreamSourceProvider;
+import software.spool.infrastructure.spi.provider.PollSourceProvider;
 
+import java.time.Duration;
 import java.util.List;
 
 @SpoolPlugin(SpoolModuleProvider.class)
-public class CrawlerStreamSpoolModuleProvider implements SpoolModuleProvider {
+public class CrawlerPollSpoolModuleProvider implements SpoolModuleProvider {
 
     @Override
-    public String name() { return "CRAWLER_STREAM"; }
+    public String name() { return "CRAWLER_POLL"; }
 
     @Override
     public int priority() { return 10; }
@@ -29,7 +33,7 @@ public class CrawlerStreamSpoolModuleProvider implements SpoolModuleProvider {
     @Override
     public boolean supports(PluginConfiguration configuration) {
         return configuration.get("descriptor", SpoolModuleDescriptor.class)
-                .filter(d -> d instanceof CrawlerDescriptor c && c.type().equals("STREAM"))
+                .filter(d -> d instanceof CrawlerDescriptor c && c.type().equals("POLL"))
                 .isPresent();
     }
 
@@ -38,13 +42,14 @@ public class CrawlerStreamSpoolModuleProvider implements SpoolModuleProvider {
         CrawlerDescriptor crawler = configuration.require("descriptor", CrawlerDescriptor.class);
         InfrastructureDescriptor infrastructure = configuration.require("infrastructure", InfrastructureDescriptor.class);
         SourceDescriptor source = crawler.source();
-        StreamSource<?> streamSource = PluginResolver.resolve(StreamSourceProvider.class,
+        PollSource<?> pollSource = PluginResolver.resolve(PollSourceProvider.class,
                 PluginConfiguration.of(source.configuration()));
         var builder = infrastructure.watchdog() != null
-                ? CrawlerBuilderFactory.watchdog(infrastructure.watchdog(), crawler.id()).stream(streamSource)
-                : CrawlerBuilderFactory.stream(streamSource);
+                ? CrawlerBuilderFactory.watchdog(infrastructure.watchdog(), crawler.id()).poll(pollSource)
+                : CrawlerBuilderFactory.poll(pollSource);
         return builder
                 .source()
+                    .schedule(buildSchedule(source))
                     .ports(InfrastructurePluginFactory.crawlerPorts(infrastructure))
                     .enrichRules(source.enrichment())
                     .rootPath(source.rootPath())
@@ -77,5 +82,11 @@ public class CrawlerStreamSpoolModuleProvider implements SpoolModuleProvider {
     @SuppressWarnings("unchecked")
     private static <I> Normalizer<I> objectNormalizer(SourceDescriptor source) {
         return (Normalizer<I>) InfrastructurePluginFactory.normalizer(source);
+    }
+
+    private PollingConfiguration buildSchedule(SourceDescriptor source) {
+        String every = source.configuration().get("scheduleMilliseconds");
+        if (every == null || Integer.parseInt(every) == 0) return PollingConfiguration.once();
+        return PollingConfiguration.every(Duration.ofMillis(Integer.parseInt(every)));
     }
 }

@@ -6,7 +6,6 @@ import java.time.Instant;
 
 public record SyntheaReceived(
         String PATIENT,
-        String CATEGORY,
         String _type
 ) implements Event {
     @Override
