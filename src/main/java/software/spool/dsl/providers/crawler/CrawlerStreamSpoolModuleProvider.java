@@ -40,8 +40,8 @@ public class CrawlerStreamSpoolModuleProvider implements SpoolModuleProvider {
         CrawlerDescriptor crawler = configuration.require("descriptor", CrawlerDescriptor.class);
         InfrastructureDescriptor infrastructure = configuration.require("infrastructure", InfrastructureDescriptor.class);
         SourceDescriptor source = crawler.source();
-        StreamSource<?> streamSource = PluginResolver.resolve(StreamSourceProvider.class,
-                PluginConfiguration.of(source.configuration()));
+        StreamSource<?> streamSource = PluginResolver.get(StreamSourceProvider.class, source.type().toUpperCase())
+                .create(PluginConfiguration.of(source.configuration()));
         var builder = infrastructure.watchdog() != null
                 ? CrawlerBuilderFactory.watchdog(infrastructure.watchdog(), crawler.id()).stream(streamSource)
                 : CrawlerBuilderFactory.stream(streamSource);

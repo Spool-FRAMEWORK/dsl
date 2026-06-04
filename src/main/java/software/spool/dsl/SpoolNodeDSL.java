@@ -14,7 +14,7 @@ import java.util.Objects;
 public abstract class SpoolNodeDSL {
     public static SpoolNode fromDescriptor(String path) throws IOException {
         try (BufferedInputStream is = new BufferedInputStream(
-                Objects.requireNonNull(Main.class.getResourceAsStream(path)))) {
+                Objects.requireNonNull(SpoolNodeDSL.class.getResourceAsStream(path), "Resource not found: " + path))) {
             RawSpoolNodeDescriptor raw = PayloadDeserializerFactory.yaml()
                     .as(RawSpoolNodeDescriptor.class)
                     .deserialize(is.readAllBytes());

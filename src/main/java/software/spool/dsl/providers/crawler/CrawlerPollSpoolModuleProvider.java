@@ -42,8 +42,8 @@ public class CrawlerPollSpoolModuleProvider implements SpoolModuleProvider {
         CrawlerDescriptor crawler = configuration.require("descriptor", CrawlerDescriptor.class);
         InfrastructureDescriptor infrastructure = configuration.require("infrastructure", InfrastructureDescriptor.class);
         SourceDescriptor source = crawler.source();
-        PollSource<?> pollSource = PluginResolver.resolve(PollSourceProvider.class,
-                PluginConfiguration.of(source.configuration()));
+        PollSource<?> pollSource = PluginResolver.get(PollSourceProvider.class, source.type().toUpperCase())
+                .create(PluginConfiguration.of(source.configuration()));
         var builder = infrastructure.watchdog() != null
                 ? CrawlerBuilderFactory.watchdog(infrastructure.watchdog(), crawler.id()).poll(pollSource)
                 : CrawlerBuilderFactory.poll(pollSource);
