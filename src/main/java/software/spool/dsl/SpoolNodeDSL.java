@@ -1,6 +1,7 @@
 package software.spool.dsl;
 
 import software.spool.core.adapter.jackson.PayloadDeserializerFactory;
+import software.spool.core.adapter.otel.OpenTelemetryMetricsRegistry;
 import software.spool.core.model.spool.SpoolNode;
 import software.spool.dsl.descriptors.SpoolNodeDescriptor;
 import software.spool.dsl.registry.ModuleProviderRegistry;
@@ -25,7 +26,7 @@ public abstract class SpoolNodeDSL {
     }
 
     public static SpoolNode fromDescriptor(SpoolNodeDescriptor descriptor) {
-        SpoolNode node = SpoolNode.create();
+        SpoolNode node = SpoolNode.create(new OpenTelemetryMetricsRegistry());
         descriptor.modules().stream()
                 .map(m -> ModuleProviderRegistry.build(m, descriptor.infrastructure()))
                 .forEach(node::register);
