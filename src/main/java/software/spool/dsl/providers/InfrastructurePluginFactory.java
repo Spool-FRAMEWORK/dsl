@@ -80,7 +80,7 @@ public final class InfrastructurePluginFactory {
 
     // ── Normalizer ─────────────────────────────────────────────────────────
 
-    public static Normalizer<?, ?, ?> normalizer(SourceDescriptor source) {
+    public static Normalizer<?> normalizer(SourceDescriptor source) {
         return PluginResolver.get(NormalizerProvider.class,
                         source.mediaType().toUpperCase() + "_NORMALIZER")
                 .create(PluginConfiguration.builder()
