@@ -1,5 +1,6 @@
 package software.spool.dsl.providers;
 
+import software.spool.core.adapter.jackson.RecordSerializerFactory;
 import software.spool.core.adapter.otel.OpenTelemetryTracedEventBus;
 import software.spool.core.port.bus.EventBus;
 import software.spool.core.port.bus.EventPublisher;
@@ -23,12 +24,9 @@ import software.spool.infrastructure.spi.provider.inbox.InboxWriterProvider;
 import software.spool.infrastructure.spi.provider.serde.NormalizerProvider;
 import software.spool.ingester.api.port.DataLakeWriter;
 
-// software.spool.infrastructure.adapter.spool.InfrastructurePluginFactory
 public final class InfrastructurePluginFactory {
 
     private InfrastructurePluginFactory() {}
-
-    // ── Event Bus ──────────────────────────────────────────────────────────
 
     public static EventBus eventBus(InfrastructureDescriptor infra) {
         return PluginResolver.get(EventBusProvider.class, infra.eventBus().pluginName())
@@ -39,8 +37,6 @@ public final class InfrastructurePluginFactory {
         return TraceEventPublisher.of(eventBus(infra))
                 .with(new OpenTelemetryTracedEventBus());
     }
-
-    // ── Inbox ──────────────────────────────────────────────────────────────
 
     public static InboxWriter inboxWriter(InfrastructureDescriptor infra) {
         return PluginResolver.get(InboxWriterProvider.class, infra.inbox().pluginName())
@@ -62,14 +58,10 @@ public final class InfrastructurePluginFactory {
                 .create(infra.inbox().toPluginConfiguration());
     }
 
-    // ── DataLake ───────────────────────────────────────────────────────────
-
     public static DataLakeWriter dataLakeWriter(InfrastructureDescriptor infra) {
         return PluginResolver.get(DataLakeWriterProvider.class, infra.dataLake().pluginName())
                 .create(infra.dataLake().toPluginConfiguration());
     }
-
-    // ── Puertos compuestos por módulo ──────────────────────────────────────
 
     public static CrawlerPorts crawlerPorts(InfrastructureDescriptor infra) {
         return CrawlerPorts.builder()
@@ -78,13 +70,11 @@ public final class InfrastructurePluginFactory {
                 .build();
     }
 
-    // ── Normalizer ─────────────────────────────────────────────────────────
-
     public static Normalizer<?> normalizer(SourceDescriptor source) {
         return PluginResolver.get(NormalizerProvider.class,
                         source.mediaType().toUpperCase() + "_NORMALIZER")
                 .create(PluginConfiguration.builder()
-                        .with("rules",    source.enrichment().toString())
+                        .with("rules", new String(RecordSerializerFactory.record().serialize(source.enrichment())))
                         .with("rootPath", source.rootPath())
                         .build());
     }
