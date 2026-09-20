@@ -15,7 +15,6 @@ import software.spool.dsl.descriptors.infrastructure.InfrastructureComponentDesc
 import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
 import software.spool.dsl.descriptors.module.crawler.source.SourceDescriptor;
 import software.spool.dsl.reader.DescriptorReader;
-import software.spool.infrastructure.PluginResolver;
 import software.spool.infrastructure.spi.provider.PluginConfiguration;
 import software.spool.infrastructure.spi.provider.bus.EventBusProvider;
 import software.spool.infrastructure.spi.provider.dataLake.DataLakeWriterProvider;
@@ -83,8 +82,7 @@ public final class InfrastructurePluginFactory {
     }
 
     public static Normalizer<?> normalizer(SourceDescriptor source) {
-        return PluginResolver.get(NormalizerProvider.class,
-                        source.mediaType().toUpperCase() + "_NORMALIZER")
+        return KnownPlugins.get(NormalizerProvider.class, source.mediaType(), "_NORMALIZER", "source.mediaType", "media type")
                 .create(PluginConfiguration.builder()
                         .with("rules", new String(RecordSerializerFactory.record().serialize(source.enrichment())))
                         .with("rootPath", source.rootPath())

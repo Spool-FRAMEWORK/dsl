@@ -12,8 +12,8 @@ import software.spool.dsl.descriptors.module.SpoolModuleDescriptor;
 import software.spool.dsl.descriptors.module.crawler.CrawlerDescriptor;
 import software.spool.dsl.descriptors.module.crawler.source.SourceDescriptor;
 import software.spool.dsl.providers.InfrastructurePluginFactory;
+import software.spool.dsl.providers.KnownPlugins;
 import software.spool.dsl.providers.SpoolModuleProvider;
-import software.spool.infrastructure.PluginResolver;
 import software.spool.infrastructure.spi.SpoolPlugin;
 import software.spool.infrastructure.spi.provider.PluginConfiguration;
 import software.spool.infrastructure.spi.provider.PollSourceProvider;
@@ -42,7 +42,7 @@ public class CrawlerPollSpoolModuleProvider implements SpoolModuleProvider {
         CrawlerDescriptor crawler = configuration.require("descriptor", CrawlerDescriptor.class);
         InfrastructureDescriptor infrastructure = configuration.require("infrastructure", InfrastructureDescriptor.class);
         SourceDescriptor source = crawler.source();
-        PollSource<?> pollSource = PluginResolver.get(PollSourceProvider.class, source.type().toUpperCase())
+        PollSource<?> pollSource = KnownPlugins.get(PollSourceProvider.class, source.type(), "source.type", "poll source")
                 .create(PluginConfiguration.of(source.configuration()));
         var builder = infrastructure.watchdog() != null
                 ? CrawlerBuilderFactory.watchdog(infrastructure.watchdog(), crawler.id()).poll(pollSource)

@@ -4,7 +4,9 @@ import org.junit.jupiter.api.Test;
 import software.spool.dsl.InvalidDescriptorException;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureComponentDescriptor;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
+import software.spool.dsl.descriptors.module.crawler.source.SourceDescriptor;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -13,6 +15,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class InfrastructurePluginFactoryTest {
 
     private static final InfrastructureComponentDescriptor BUS = new InfrastructureComponentDescriptor("IN_MEMORY", Map.of());
+
+    private static SourceDescriptor source(String mediaType) {
+        return new SourceDescriptor("HTTP", "s", Map.of(), mediaType, "", List.of());
+    }
 
     @Test
     void eventBus_needsNoOtherComponent() {
@@ -59,6 +65,20 @@ class InfrastructurePluginFactoryTest {
         assertThatThrownBy(() -> InfrastructurePluginFactory.dataLakeWriter(unknown))
             .hasMessageStartingWith("infrastructure.dataLake.type 'NOPE' is not a known data lake writer. Known: ")
             .hasMessageContaining("FILE_SYSTEM");
+    }
+
+    @Test
+    void normalizer_withAKnownMediaType_returnsIt() {
+        assertThat(InfrastructurePluginFactory.normalizer(source("JSON_ARRAY"))).isNotNull();
+    }
+
+    @Test
+    void normalizer_withAnUnknownMediaType_namesTheKeyAndTheKnownOnes() {
+        assertThatThrownBy(() -> InfrastructurePluginFactory.normalizer(source("PNG")))
+            .isInstanceOf(InvalidDescriptorException.class)
+            .hasMessageStartingWith("source.mediaType 'PNG' is not a known media type. Known: ")
+            .hasMessageContaining("JSON_ARRAY")
+            .hasMessageNotContaining("_NORMALIZER");
     }
 
     @Test
