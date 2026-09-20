@@ -60,6 +60,9 @@ public class CrawlerPollSpoolModuleProvider implements SpoolModuleProvider {
                     .addDomainEvent(resolveEventClasses(crawler.eventMapping().domainMappingList()), crawler.eventMapping().attributeList().toArray(String[]::new))
                     .addPartitionAttributes(crawler.eventMapping().attributeList().toArray(String[]::new))
                     .and()
+                .observability()
+                    .withErrorRouter(CrawlerErrorRouters.resolve(crawler))
+                    .and()
                 .createWith(objectNormalizer(source));
     }
 
