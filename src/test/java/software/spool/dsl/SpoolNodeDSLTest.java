@@ -19,7 +19,25 @@ class SpoolNodeDSLTest {
     @Test
     void fromDescriptor_nonExistentResource_throwsIOException() {
         assertThatThrownBy(() -> SpoolNodeDSL.fromDescriptor("/non-existent.yaml"))
-            .isInstanceOf(IOException.class);
+            .isInstanceOf(IOException.class)
+            .hasMessage("Descriptor not found in the classpath: /non-existent.yaml");
+    }
+
+    @Test
+    void fromDescriptor_descriptorWithAMissingKey_reportsTheFileAndTheKey() {
+        assertThatThrownBy(() -> SpoolNodeDSL.fromDescriptor("/descriptors/crawler-without-source.yaml"))
+            .isInstanceOf(IOException.class)
+            .hasMessage("Invalid descriptor /descriptors/crawler-without-source.yaml: "
+                + "modules[0].crawler.source is required")
+            .hasCauseInstanceOf(InvalidDescriptorException.class);
+    }
+
+    @Test
+    void fromDescriptor_fileThatIsNotYaml_reportsTheFileAndKeepsTheCause() {
+        assertThatThrownBy(() -> SpoolNodeDSL.fromDescriptor("/descriptors/not-yaml.yaml"))
+            .isInstanceOf(IOException.class)
+            .hasMessageStartingWith("Could not load descriptor /descriptors/not-yaml.yaml: ")
+            .hasCauseInstanceOf(Exception.class);
     }
 
     @Test

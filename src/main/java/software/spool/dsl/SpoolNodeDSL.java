@@ -9,19 +9,23 @@ import software.spool.dsl.yaml.DescriptorMapper;
 import software.spool.dsl.yaml.raw.RawSpoolNodeDescriptor;
 
 import java.io.BufferedInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.util.Objects;
+import java.io.InputStream;
 
 public abstract class SpoolNodeDSL {
     public static SpoolNode fromDescriptor(String path) throws IOException {
-        try (BufferedInputStream is = new BufferedInputStream(
-                Objects.requireNonNull(SpoolNodeDSL.class.getResourceAsStream(path), "Resource not found: " + path))) {
+        InputStream resource = SpoolNodeDSL.class.getResourceAsStream(path);
+        if (resource == null) throw new FileNotFoundException("Descriptor not found in the classpath: " + path);
+        try (BufferedInputStream is = new BufferedInputStream(resource)) {
             RawSpoolNodeDescriptor raw = PayloadDeserializerFactory.yaml()
                     .as(RawSpoolNodeDescriptor.class)
                     .deserialize(is.readAllBytes());
             return fromDescriptor(DescriptorMapper.map(raw));
+        } catch (InvalidDescriptorException e) {
+            throw new IOException("Invalid descriptor " + path + ": " + e.getMessage(), e);
         } catch (Exception e) {
-            throw new IOException(e);
+            throw new IOException("Could not load descriptor " + path + ": " + e.getMessage(), e);
         }
     }
 
