@@ -22,7 +22,7 @@ public final class ModuleProviderRegistry {
         try {
             return PluginResolver.resolve(SpoolModuleProvider.class, config);
         } catch (InvalidDescriptorException e) {
-            throw e.neededBy("module '" + descriptor.id() + "'");
+            throw e.inModule(descriptor.id());
         }
     }
 }

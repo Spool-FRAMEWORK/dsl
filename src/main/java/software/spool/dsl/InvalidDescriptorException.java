@@ -11,7 +11,11 @@ public class InvalidDescriptorException extends IllegalArgumentException {
     private final String problem;
 
     public InvalidDescriptorException(String path, String problem) {
-        super(path + " " + problem);
+        this(path, problem, "");
+    }
+
+    private InvalidDescriptorException(String path, String problem, String context) {
+        super(context + path + " " + problem);
         this.path = path;
         this.problem = problem;
     }
@@ -21,8 +25,8 @@ public class InvalidDescriptorException extends IllegalArgumentException {
         return path;
     }
 
-    /** The same problem, saying which module ran into it. */
-    public InvalidDescriptorException neededBy(String module) {
-        return new InvalidDescriptorException(path, problem + ", needed by " + module);
+    /** The same problem, saying which module ran into it: {@code module 'x': path problem}. */
+    public InvalidDescriptorException inModule(String module) {
+        return new InvalidDescriptorException(path, problem, "module '" + module + "': ");
     }
 }

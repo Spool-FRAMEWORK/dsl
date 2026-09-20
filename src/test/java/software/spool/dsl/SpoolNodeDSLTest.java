@@ -60,6 +60,6 @@ class SpoolNodeDSLTest {
 
         assertThatThrownBy(() -> SpoolNodeDSL.fromDescriptor(descriptor))
             .isInstanceOf(InvalidDescriptorException.class)
-            .hasMessage("infrastructure.dataLake is required, needed by module 'synthea-ingester'");
+            .hasMessage("module 'synthea-ingester': infrastructure.dataLake is required");
     }
 }
