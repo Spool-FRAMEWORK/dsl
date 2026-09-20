@@ -3,6 +3,8 @@ package software.spool.dsl.yaml;
 import org.junit.jupiter.api.Test;
 import software.spool.dsl.InvalidDescriptorException;
 import software.spool.dsl.descriptors.SpoolNodeDescriptor;
+import software.spool.dsl.descriptors.module.crawler.CrawlerDescriptor;
+import software.spool.dsl.descriptors.module.crawler.ErrorRouterDescriptor;
 import software.spool.dsl.descriptors.module.ingester.IngesterDescriptor;
 import software.spool.dsl.yaml.raw.RawComponentDescriptor;
 import software.spool.dsl.yaml.raw.RawInfrastructureDescriptor;
@@ -116,6 +118,48 @@ class DescriptorMapperTest {
 
         assertThatThrownBy(() -> DescriptorMapper.map(raw))
             .hasMessage("modules[0].crawler.source.configuration.scheduleMilliseconds must be an integer, got 'soon'");
+    }
+
+    @Test
+    void map_crawlerWithAnErrorRouter_keepsItsTypeAndConfiguration() {
+        Map<String, Object> crawler = crawler(Map.of("namingConvention", "SNAKE_CASE"));
+        crawler.put("errorRouter", Map.of("type", "ALERTS", "configuration", Map.of("webhook", "https://alerts")));
+        RawSpoolNodeDescriptor raw = new RawSpoolNodeDescriptor(anyInfra(), List.of(Map.of("crawler", crawler)));
+
+        CrawlerDescriptor result = (CrawlerDescriptor) DescriptorMapper.map(raw).modules().get(0);
+
+        assertThat(result.errorRouter()).isEqualTo(new ErrorRouterDescriptor("ALERTS", Map.of("webhook", "https://alerts")));
+    }
+
+    @Test
+    void map_crawlerWithoutAnErrorRouter_hasNone() {
+        RawSpoolNodeDescriptor raw = new RawSpoolNodeDescriptor(anyInfra(),
+            List.of(Map.of("crawler", crawler(Map.of("namingConvention", "SNAKE_CASE")))));
+
+        CrawlerDescriptor result = (CrawlerDescriptor) DescriptorMapper.map(raw).modules().get(0);
+
+        assertThat(result.errorRouter()).isNull();
+    }
+
+    @Test
+    void map_errorRouterWithoutConfiguration_hasAnEmptyOne() {
+        Map<String, Object> crawler = crawler(Map.of("namingConvention", "SNAKE_CASE"));
+        crawler.put("errorRouter", Map.of("type", "ALERTS"));
+        RawSpoolNodeDescriptor raw = new RawSpoolNodeDescriptor(anyInfra(), List.of(Map.of("crawler", crawler)));
+
+        CrawlerDescriptor result = (CrawlerDescriptor) DescriptorMapper.map(raw).modules().get(0);
+
+        assertThat(result.errorRouter().configuration()).isEmpty();
+    }
+
+    @Test
+    void map_errorRouterWithoutAType_namesTheMissingKey() {
+        Map<String, Object> crawler = crawler(Map.of("namingConvention", "SNAKE_CASE"));
+        crawler.put("errorRouter", Map.of("configuration", Map.of("webhook", "https://alerts")));
+        RawSpoolNodeDescriptor raw = new RawSpoolNodeDescriptor(anyInfra(), List.of(Map.of("crawler", crawler)));
+
+        assertThatThrownBy(() -> DescriptorMapper.map(raw))
+            .hasMessage("modules[0].crawler.errorRouter.type is required");
     }
 
     @Test

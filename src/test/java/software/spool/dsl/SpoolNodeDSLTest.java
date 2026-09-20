@@ -62,4 +62,18 @@ class SpoolNodeDSLTest {
             .isInstanceOf(InvalidDescriptorException.class)
             .hasMessage("module 'synthea-ingester': infrastructure.dataLake is required");
     }
+
+    @Test
+    void fromDescriptor_s3DataLakeWithHalfTheCredentials_saysWhichKeyIsMissing() {
+        InfrastructureComponentDescriptor bus = new InfrastructureComponentDescriptor("IN_MEMORY", Map.of());
+        InfrastructureComponentDescriptor lake = new InfrastructureComponentDescriptor("S3", Map.of(
+            "region", "auto", "bucket", "spool", "endpoint", "http://localhost:9000", "accessKeyEnv", "R2_ACCESS_KEY"));
+        InfrastructureDescriptor infra = new InfrastructureDescriptor(null, bus, bus, lake);
+        SpoolNodeDescriptor descriptor = new SpoolNodeDescriptor(infra,
+            List.of(new IngesterDescriptor("REACTIVE", "synthea-ingester", Map.of())));
+
+        assertThatThrownBy(() -> SpoolNodeDSL.fromDescriptor(descriptor))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("S3 credentials need both accessKeyEnv and secretKeyEnv, but secretKeyEnv is missing");
+    }
 }

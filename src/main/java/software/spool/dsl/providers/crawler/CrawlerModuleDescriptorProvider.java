@@ -4,6 +4,7 @@ import software.spool.core.port.serde.EnrichmentRule;
 import software.spool.core.port.serde.NamingConvention;
 import software.spool.dsl.descriptors.module.SpoolModuleDescriptor;
 import software.spool.dsl.descriptors.module.crawler.CrawlerDescriptor;
+import software.spool.dsl.descriptors.module.crawler.ErrorRouterDescriptor;
 import software.spool.dsl.descriptors.module.crawler.EventMappingDescriptor;
 import software.spool.dsl.descriptors.module.crawler.source.SourceDescriptor;
 import software.spool.dsl.providers.ModuleDescriptorProvider;
@@ -45,8 +46,15 @@ public class CrawlerModuleDescriptorProvider implements ModuleDescriptorProvider
                 crawler.string("type"),
                 crawler.string("id"),
                 readSource(crawler.object("source")),
-                readEventMapping(crawler.object("eventMapping"))
+                readEventMapping(crawler.object("eventMapping")),
+                readErrorRouter(crawler)
         );
+    }
+
+    private static ErrorRouterDescriptor readErrorRouter(DescriptorReader crawler) {
+        if (!crawler.keys().contains("errorRouter")) return null;
+        DescriptorReader router = crawler.object("errorRouter");
+        return new ErrorRouterDescriptor(router.string("type"), router.stringMap("configuration"));
     }
 
     private static SourceDescriptor readSource(DescriptorReader source) {
