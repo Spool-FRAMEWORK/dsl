@@ -11,9 +11,10 @@ import software.spool.core.port.inbox.InboxUpdater;
 import software.spool.crawler.api.port.InboxWriter;
 import software.spool.crawler.api.utils.CrawlerPorts;
 import software.spool.crawler.internal.utils.factory.Normalizer;
+import software.spool.dsl.descriptors.infrastructure.InfrastructureComponentDescriptor;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
 import software.spool.dsl.descriptors.module.crawler.source.SourceDescriptor;
-import software.spool.infrastructure.PluginResolver;
+import software.spool.dsl.reader.DescriptorReader;
 import software.spool.infrastructure.spi.provider.PluginConfiguration;
 import software.spool.infrastructure.spi.provider.bus.EventBusProvider;
 import software.spool.infrastructure.spi.provider.dataLake.DataLakeWriterProvider;
@@ -24,13 +25,18 @@ import software.spool.infrastructure.spi.provider.inbox.InboxWriterProvider;
 import software.spool.infrastructure.spi.provider.serde.NormalizerProvider;
 import software.spool.ingester.api.port.DataLakeWriter;
 
+/**
+ * Builds the infrastructure ports a module asks for. A component is required only when a module asks
+ * for it, so a node with just a crawler does not need a data lake in its descriptor.
+ */
 public final class InfrastructurePluginFactory {
 
     private InfrastructurePluginFactory() {}
 
     public static EventBus eventBus(InfrastructureDescriptor infra) {
-        return PluginResolver.get(EventBusProvider.class, infra.eventBus().pluginName())
-                .create(infra.eventBus().toPluginConfiguration());
+        InfrastructureComponentDescriptor bus = required(infra.eventBus(), "eventBus");
+        return KnownPlugins.get(EventBusProvider.class, bus.pluginName(), "infrastructure.eventBus.type", "event bus")
+                .create(bus.toPluginConfiguration());
     }
 
     public static EventPublisher tracedEventPublisher(InfrastructureDescriptor infra) {
@@ -39,28 +45,33 @@ public final class InfrastructurePluginFactory {
     }
 
     public static InboxWriter inboxWriter(InfrastructureDescriptor infra) {
-        return PluginResolver.get(InboxWriterProvider.class, infra.inbox().pluginName())
-                .create(infra.inbox().toPluginConfiguration());
+        InfrastructureComponentDescriptor inbox = required(infra.inbox(), "inbox");
+        return KnownPlugins.get(InboxWriterProvider.class, inbox.pluginName(), "infrastructure.inbox.type", "inbox writer")
+                .create(inbox.toPluginConfiguration());
     }
 
     public static InboxReader inboxReader(InfrastructureDescriptor infra) {
-        return PluginResolver.get(InboxReaderProvider.class, infra.inbox().pluginName())
-                .create(infra.inbox().toPluginConfiguration());
+        InfrastructureComponentDescriptor inbox = required(infra.inbox(), "inbox");
+        return KnownPlugins.get(InboxReaderProvider.class, inbox.pluginName(), "infrastructure.inbox.type", "inbox reader")
+                .create(inbox.toPluginConfiguration());
     }
 
     public static InboxUpdater inboxUpdater(InfrastructureDescriptor infra) {
-        return PluginResolver.get(InboxUpdaterProvider.class, infra.inbox().pluginName())
-                .create(infra.inbox().toPluginConfiguration());
+        InfrastructureComponentDescriptor inbox = required(infra.inbox(), "inbox");
+        return KnownPlugins.get(InboxUpdaterProvider.class, inbox.pluginName(), "infrastructure.inbox.type", "inbox updater")
+                .create(inbox.toPluginConfiguration());
     }
 
     public static InboxEnvelopeRemover inboxEnvelopeRemover(InfrastructureDescriptor infra) {
-        return PluginResolver.get(InboxEnvelopeRemoverProvider.class, infra.inbox().pluginName())
-                .create(infra.inbox().toPluginConfiguration());
+        InfrastructureComponentDescriptor inbox = required(infra.inbox(), "inbox");
+        return KnownPlugins.get(InboxEnvelopeRemoverProvider.class, inbox.pluginName(), "infrastructure.inbox.type", "inbox envelope remover")
+                .create(inbox.toPluginConfiguration());
     }
 
     public static DataLakeWriter dataLakeWriter(InfrastructureDescriptor infra) {
-        return PluginResolver.get(DataLakeWriterProvider.class, infra.dataLake().pluginName())
-                .create(infra.dataLake().toPluginConfiguration());
+        InfrastructureComponentDescriptor dataLake = required(infra.dataLake(), "dataLake");
+        return KnownPlugins.get(DataLakeWriterProvider.class, dataLake.pluginName(), "infrastructure.dataLake.type", "data lake writer")
+                .create(dataLake.toPluginConfiguration());
     }
 
     public static CrawlerPorts crawlerPorts(InfrastructureDescriptor infra) {
@@ -71,11 +82,14 @@ public final class InfrastructurePluginFactory {
     }
 
     public static Normalizer<?> normalizer(SourceDescriptor source) {
-        return PluginResolver.get(NormalizerProvider.class,
-                        source.mediaType().toUpperCase() + "_NORMALIZER")
+        return KnownPlugins.get(NormalizerProvider.class, source.mediaType(), "_NORMALIZER", "source.mediaType", "media type")
                 .create(PluginConfiguration.builder()
                         .with("rules", new String(RecordSerializerFactory.record().serialize(source.enrichment())))
                         .with("rootPath", source.rootPath())
                         .build());
+    }
+
+    private static InfrastructureComponentDescriptor required(InfrastructureComponentDescriptor component, String key) {
+        return DescriptorReader.require("infrastructure." + key, component);
     }
 }

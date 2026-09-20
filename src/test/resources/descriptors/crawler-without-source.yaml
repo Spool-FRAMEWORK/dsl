@@ -1,0 +1,12 @@
+infrastructure:
+  eventBus:
+    type: IN_MEMORY
+  inbox:
+    type: IN_MEMORY
+
+modules:
+  - crawler:
+      type: POLL
+      id: broken-crawler
+      eventMapping:
+        namingConvention: SNAKE_CASE

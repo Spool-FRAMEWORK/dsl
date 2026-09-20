@@ -1,23 +1,22 @@
 package software.spool.dsl.yaml;
 
-import software.spool.core.port.serde.EnrichmentRule;
-import software.spool.core.port.serde.NamingConvention;
+import software.spool.dsl.InvalidDescriptorException;
 import software.spool.dsl.descriptors.SpoolNodeDescriptor;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureComponentDescriptor;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
 import software.spool.dsl.descriptors.module.SpoolModuleDescriptor;
-import software.spool.dsl.descriptors.module.crawler.CrawlerDescriptor;
-import software.spool.dsl.descriptors.module.crawler.EventMappingDescriptor;
-import software.spool.dsl.descriptors.module.crawler.source.SourceDescriptor;
-import software.spool.dsl.descriptors.module.ingester.IngesterDescriptor;
-import software.spool.dsl.descriptors.module.janitor.JanitorDescriptor;
+import software.spool.dsl.providers.ModuleDescriptorProvider;
+import software.spool.dsl.reader.DescriptorReader;
 import software.spool.dsl.yaml.raw.RawComponentDescriptor;
 import software.spool.dsl.yaml.raw.RawInfrastructureDescriptor;
 import software.spool.dsl.yaml.raw.RawSpoolNodeDescriptor;
+import software.spool.infrastructure.PluginRegistry;
+import software.spool.infrastructure.PluginResolver;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public final class DescriptorMapper {
@@ -26,118 +25,60 @@ public final class DescriptorMapper {
     public static SpoolNodeDescriptor map(RawSpoolNodeDescriptor raw) {
         return new SpoolNodeDescriptor(
                 toInfrastructure(raw.infrastructure()),
-                raw.modules().stream()
-                        .map(DescriptorMapper::toModule)
-                        .toList()
+                toModules(raw.modules())
         );
     }
 
     private static InfrastructureDescriptor toInfrastructure(RawInfrastructureDescriptor raw) {
+        DescriptorReader.require("infrastructure", raw);
         return new InfrastructureDescriptor(
                 raw.watchdog(),
-                toComponent(raw.eventBus()),
-                toComponent(raw.inbox()),
-                toComponent(raw.dataLake())
+                toComponent("infrastructure.eventBus", raw.eventBus()),
+                toComponent("infrastructure.inbox", raw.inbox()),
+                toComponent("infrastructure.dataLake", raw.dataLake())
         );
     }
 
-    private static InfrastructureComponentDescriptor toComponent(RawComponentDescriptor raw) {
+    /**
+     * A component that is not in the descriptor is left out: only the modules that use it need it, and
+     * {@code InfrastructurePluginFactory} asks for it at that point.
+     */
+    private static InfrastructureComponentDescriptor toComponent(String path, RawComponentDescriptor raw) {
+        if (raw == null) return null;
         return new InfrastructureComponentDescriptor(
-                raw.type(),
+                DescriptorReader.require(path + ".type", raw.type()),
                 raw.configuration() != null ? raw.configuration() : Map.of()
         );
     }
 
-    @SuppressWarnings("unchecked")
-    private static SpoolModuleDescriptor toModule(Map<String, Object> raw) {
-        if (raw.containsKey("crawler"))  return toCrawler((Map<String, Object>) raw.get("crawler"));
-        if (raw.containsKey("janitor"))  return toJanitor((Map<String, Object>) raw.get("janitor"));
-        if (raw.containsKey("ingester")) return toIngester((Map<String, Object>) raw.get("ingester"));
-        throw new IllegalArgumentException("Unknown module type in: " + raw.keySet());
+    private static List<SpoolModuleDescriptor> toModules(List<Map<String, Object>> entries) {
+        List<Map<String, Object>> modules = DescriptorReader.require("modules", entries);
+        List<SpoolModuleDescriptor> descriptors = new ArrayList<>();
+        for (int i = 0; i < modules.size(); i++) {
+            descriptors.add(toModule(DescriptorReader.of("modules[" + i + "]", modules.get(i))));
+        }
+        return descriptors;
     }
 
-    @SuppressWarnings("unchecked")
-    private static CrawlerDescriptor toCrawler(Map<String, Object> raw) {
-        Map<String, Object> sourceRaw = (Map<String, Object>) raw.get("source");
-        Map<String, Object> mappingRaw = (Map<String, Object>) raw.get("eventMapping");
-
-        return new CrawlerDescriptor(
-                (String) raw.get("type"),
-                (String) raw.get("id"),
-                toSource(sourceRaw),
-                toEventMapping(mappingRaw)
-        );
+    /** Each entry names its module type with its only key; the provider registered for that name reads it. */
+    private static SpoolModuleDescriptor toModule(DescriptorReader entry) {
+        Set<String> keys = entry.keys();
+        if (keys.size() != 1) {
+            throw new InvalidDescriptorException(entry.path(),
+                    "must have exactly one key naming the module type, found " + keys);
+        }
+        String type = keys.iterator().next();
+        return providerFor(entry.path(), type).read(entry.objectOrEmpty(type));
     }
 
-    @SuppressWarnings("unchecked")
-    private static SourceDescriptor toSource(Map<String, Object> raw) {
-        Map<String, String> config = toStringMap(
-                (Map<String, Object>) raw.getOrDefault("configuration", Map.of())
-        );
-        List<EnrichmentRule> enrichment = toEnrichmentRules(
-                (List<Map<String, String>>) raw.getOrDefault("enrichment", List.of()));
-        return new SourceDescriptor(
-                (String) raw.get("type"),
-                (String) raw.get("id"),
-                config,
-                (String) raw.get("mediaType"),
-                (String) raw.get("rootPath"),
-                enrichment
-        );
-    }
-
-    @SuppressWarnings("unchecked")
-    private static EventMappingDescriptor toEventMapping(Map<String, Object> raw) {
-        List<Object> rawAttributes = (List<Object>) raw.getOrDefault("attributeList", List.of());
-        List<String> attributes = rawAttributes.stream()
-                .map(entry -> entry instanceof Map<?, ?> m
-                        ? (String) m.get("value")
-                        : (String) entry)
-                .filter(Objects::nonNull)
-                .toList();
-        List<Object> rawDomainMappings = (List<Object>) raw.getOrDefault("domainMappingList", List.of());
-        List<String> domainMappings = rawDomainMappings.stream()
-                .map(entry -> entry instanceof Map<?, ?> m
-                        ? (String) m.get("value")
-                        : (String) entry)
-                .filter(Objects::nonNull)
-                .toList();
-        return new EventMappingDescriptor(
-                NamingConvention.valueOf((String) raw.get("namingConvention")),
-                domainMappings,
-                attributes
-        );
-    }
-
-    private static List<EnrichmentRule> toEnrichmentRules(List<Map<String, String>> raw) {
-        return raw.stream()
-                .map(r -> new EnrichmentRule(r.get("source"), r.get("target")))
-                .toList();
-    }
-
-    @SuppressWarnings("unchecked")
-    private static JanitorDescriptor toJanitor(Map<String, Object> raw) {
-        return new JanitorDescriptor(
-                (String) raw.get("id"),
-                toStringMap((Map<String, Object>) raw.getOrDefault("configuration", Map.of()))
-        );
-    }
-
-    @SuppressWarnings("unchecked")
-    private static IngesterDescriptor toIngester(Map<String, Object> raw) {
-        return new IngesterDescriptor(
-                (String) raw.get("type"),
-                (String) raw.get("id"),
-                toStringMap((Map<String, Object>) raw.getOrDefault("configuration", Map.of()))
-        );
-    }
-
-    private static Map<String, String> toStringMap(Map<String, Object> raw) {
-        if (raw == null) return Map.of();
-        return raw.entrySet().stream()
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        e -> String.valueOf(e.getValue())
-                ));
+    private static ModuleDescriptorProvider providerFor(String path, String type) {
+        try {
+            return PluginResolver.get(ModuleDescriptorProvider.class, type);
+        } catch (IllegalStateException unknown) {
+            String known = PluginRegistry.findAll(ModuleDescriptorProvider.class).keySet().stream()
+                    .map(String::toLowerCase).sorted().collect(Collectors.joining(", "));
+            throw new InvalidDescriptorException(path,
+                    "has an unknown module type '" + type + "'. Known types: " + known);
+        }
     }
 }

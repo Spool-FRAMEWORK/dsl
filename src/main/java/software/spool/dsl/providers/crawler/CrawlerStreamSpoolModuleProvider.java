@@ -11,8 +11,8 @@ import software.spool.dsl.descriptors.module.SpoolModuleDescriptor;
 import software.spool.dsl.descriptors.module.crawler.CrawlerDescriptor;
 import software.spool.dsl.descriptors.module.crawler.source.SourceDescriptor;
 import software.spool.dsl.providers.InfrastructurePluginFactory;
+import software.spool.dsl.providers.KnownPlugins;
 import software.spool.dsl.providers.SpoolModuleProvider;
-import software.spool.infrastructure.PluginResolver;
 import software.spool.infrastructure.spi.SpoolPlugin;
 import software.spool.infrastructure.spi.provider.PluginConfiguration;
 import software.spool.infrastructure.spi.provider.StreamSourceProvider;
@@ -40,7 +40,7 @@ public class CrawlerStreamSpoolModuleProvider implements SpoolModuleProvider {
         CrawlerDescriptor crawler = configuration.require("descriptor", CrawlerDescriptor.class);
         InfrastructureDescriptor infrastructure = configuration.require("infrastructure", InfrastructureDescriptor.class);
         SourceDescriptor source = crawler.source();
-        StreamSource<?> streamSource = PluginResolver.get(StreamSourceProvider.class, source.type().toUpperCase())
+        StreamSource<?> streamSource = KnownPlugins.get(StreamSourceProvider.class, source.type(), "source.type", "stream source")
                 .create(PluginConfiguration.of(source.configuration()));
         var builder = infrastructure.watchdog() != null
                 ? CrawlerBuilderFactory.watchdog(infrastructure.watchdog(), crawler.id()).stream(streamSource)
