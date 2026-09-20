@@ -36,7 +36,7 @@ public final class InfrastructurePluginFactory {
 
     public static EventBus eventBus(InfrastructureDescriptor infra) {
         InfrastructureComponentDescriptor bus = required(infra.eventBus(), "eventBus");
-        return PluginResolver.get(EventBusProvider.class, bus.pluginName())
+        return KnownPlugins.get(EventBusProvider.class, bus.pluginName(), "infrastructure.eventBus.type", "event bus")
                 .create(bus.toPluginConfiguration());
     }
 
@@ -47,31 +47,31 @@ public final class InfrastructurePluginFactory {
 
     public static InboxWriter inboxWriter(InfrastructureDescriptor infra) {
         InfrastructureComponentDescriptor inbox = required(infra.inbox(), "inbox");
-        return PluginResolver.get(InboxWriterProvider.class, inbox.pluginName())
+        return KnownPlugins.get(InboxWriterProvider.class, inbox.pluginName(), "infrastructure.inbox.type", "inbox writer")
                 .create(inbox.toPluginConfiguration());
     }
 
     public static InboxReader inboxReader(InfrastructureDescriptor infra) {
         InfrastructureComponentDescriptor inbox = required(infra.inbox(), "inbox");
-        return PluginResolver.get(InboxReaderProvider.class, inbox.pluginName())
+        return KnownPlugins.get(InboxReaderProvider.class, inbox.pluginName(), "infrastructure.inbox.type", "inbox reader")
                 .create(inbox.toPluginConfiguration());
     }
 
     public static InboxUpdater inboxUpdater(InfrastructureDescriptor infra) {
         InfrastructureComponentDescriptor inbox = required(infra.inbox(), "inbox");
-        return PluginResolver.get(InboxUpdaterProvider.class, inbox.pluginName())
+        return KnownPlugins.get(InboxUpdaterProvider.class, inbox.pluginName(), "infrastructure.inbox.type", "inbox updater")
                 .create(inbox.toPluginConfiguration());
     }
 
     public static InboxEnvelopeRemover inboxEnvelopeRemover(InfrastructureDescriptor infra) {
         InfrastructureComponentDescriptor inbox = required(infra.inbox(), "inbox");
-        return PluginResolver.get(InboxEnvelopeRemoverProvider.class, inbox.pluginName())
+        return KnownPlugins.get(InboxEnvelopeRemoverProvider.class, inbox.pluginName(), "infrastructure.inbox.type", "inbox envelope remover")
                 .create(inbox.toPluginConfiguration());
     }
 
     public static DataLakeWriter dataLakeWriter(InfrastructureDescriptor infra) {
         InfrastructureComponentDescriptor dataLake = required(infra.dataLake(), "dataLake");
-        return PluginResolver.get(DataLakeWriterProvider.class, dataLake.pluginName())
+        return KnownPlugins.get(DataLakeWriterProvider.class, dataLake.pluginName(), "infrastructure.dataLake.type", "data lake writer")
                 .create(dataLake.toPluginConfiguration());
     }
 
