@@ -5,6 +5,7 @@ import software.spool.core.model.spool.SpoolNode;
 import software.spool.dsl.descriptors.SpoolNodeDescriptor;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureComponentDescriptor;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
+import software.spool.dsl.descriptors.module.ingester.IngesterDescriptor;
 
 import java.io.IOException;
 import java.util.List;
@@ -30,5 +31,17 @@ class SpoolNodeDSLTest {
         SpoolNode node = SpoolNodeDSL.fromDescriptor(descriptor);
 
         assertThat(node).isNotNull();
+    }
+
+    @Test
+    void fromDescriptor_ingesterWithoutDataLake_saysWhichModuleNeedsIt() {
+        InfrastructureComponentDescriptor bus = new InfrastructureComponentDescriptor("IN_MEMORY", Map.of());
+        InfrastructureDescriptor infra = new InfrastructureDescriptor(null, bus, bus, null);
+        SpoolNodeDescriptor descriptor = new SpoolNodeDescriptor(infra,
+            List.of(new IngesterDescriptor("REACTIVE", "synthea-ingester", Map.of())));
+
+        assertThatThrownBy(() -> SpoolNodeDSL.fromDescriptor(descriptor))
+            .isInstanceOf(InvalidDescriptorException.class)
+            .hasMessage("infrastructure.dataLake is required, needed by module 'synthea-ingester'");
     }
 }

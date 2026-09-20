@@ -8,14 +8,21 @@ package software.spool.dsl;
  */
 public class InvalidDescriptorException extends IllegalArgumentException {
     private final String path;
+    private final String problem;
 
     public InvalidDescriptorException(String path, String problem) {
         super(path + " " + problem);
         this.path = path;
+        this.problem = problem;
     }
 
     /** Where in the descriptor the problem is, as a dotted path. */
     public String path() {
         return path;
+    }
+
+    /** The same problem, saying which module ran into it. */
+    public InvalidDescriptorException neededBy(String module) {
+        return new InvalidDescriptorException(path, problem + ", needed by " + module);
     }
 }

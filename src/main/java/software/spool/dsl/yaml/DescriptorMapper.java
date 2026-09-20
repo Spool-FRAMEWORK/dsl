@@ -30,17 +30,23 @@ public final class DescriptorMapper {
     }
 
     private static InfrastructureDescriptor toInfrastructure(RawInfrastructureDescriptor raw) {
+        DescriptorReader.require("infrastructure", raw);
         return new InfrastructureDescriptor(
                 raw.watchdog(),
-                toComponent(raw.eventBus()),
-                toComponent(raw.inbox()),
-                toComponent(raw.dataLake())
+                toComponent("infrastructure.eventBus", raw.eventBus()),
+                toComponent("infrastructure.inbox", raw.inbox()),
+                toComponent("infrastructure.dataLake", raw.dataLake())
         );
     }
 
-    private static InfrastructureComponentDescriptor toComponent(RawComponentDescriptor raw) {
+    /**
+     * A component that is not in the descriptor is left out: only the modules that use it need it, and
+     * {@code InfrastructurePluginFactory} asks for it at that point.
+     */
+    private static InfrastructureComponentDescriptor toComponent(String path, RawComponentDescriptor raw) {
+        if (raw == null) return null;
         return new InfrastructureComponentDescriptor(
-                raw.type(),
+                DescriptorReader.require(path + ".type", raw.type()),
                 raw.configuration() != null ? raw.configuration() : Map.of()
         );
     }

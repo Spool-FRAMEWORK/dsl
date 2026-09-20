@@ -144,6 +144,34 @@ class DescriptorMapperTest {
         assertThatThrownBy(() -> DescriptorMapper.map(raw)).hasMessage("modules is required");
     }
 
+    @Test
+    void map_infrastructureWithoutDataLake_isAcceptedBecauseOnlyTheIngesterNeedsIt() {
+        RawComponentDescriptor component = new RawComponentDescriptor("IN_MEMORY", null);
+        RawSpoolNodeDescriptor raw = new RawSpoolNodeDescriptor(
+            new RawInfrastructureDescriptor(null, component, component, null), List.of());
+
+        SpoolNodeDescriptor result = DescriptorMapper.map(raw);
+
+        assertThat(result.infrastructure().dataLake()).isNull();
+        assertThat(result.infrastructure().inbox().type()).isEqualTo("IN_MEMORY");
+    }
+
+    @Test
+    void map_withoutInfrastructure_saysSo() {
+        RawSpoolNodeDescriptor raw = new RawSpoolNodeDescriptor(null, List.of());
+
+        assertThatThrownBy(() -> DescriptorMapper.map(raw)).hasMessage("infrastructure is required");
+    }
+
+    @Test
+    void map_infrastructureComponentWithoutType_namesTheKey() {
+        RawComponentDescriptor component = new RawComponentDescriptor("IN_MEMORY", null);
+        RawSpoolNodeDescriptor raw = new RawSpoolNodeDescriptor(
+            new RawInfrastructureDescriptor(null, component, new RawComponentDescriptor(null, null), component), List.of());
+
+        assertThatThrownBy(() -> DescriptorMapper.map(raw)).hasMessage("infrastructure.inbox.type is required");
+    }
+
     /** A crawler with everything it needs except the given event mapping. */
     private static Map<String, Object> crawler(Map<String, Object> eventMapping) {
         Map<String, Object> source = new HashMap<>(Map.of("type", "HTTP", "mediaType", "JSON_ARRAY"));
