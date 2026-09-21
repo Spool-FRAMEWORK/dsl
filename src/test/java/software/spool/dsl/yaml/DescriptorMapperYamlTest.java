@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import software.spool.core.adapter.jackson.PayloadDeserializerFactory;
 import software.spool.core.port.serde.EnrichmentRule;
 import software.spool.core.port.serde.NamingConvention;
+import software.spool.dsl.InvalidDescriptorException;
 import software.spool.dsl.descriptors.SpoolNodeDescriptor;
 import software.spool.dsl.descriptors.module.crawler.CrawlerDescriptor;
 import software.spool.dsl.descriptors.module.ingester.IngesterDescriptor;
@@ -14,6 +15,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /** Reads real YAML through the same deserializer the DSL uses, so the whole path is covered. */
 class DescriptorMapperYamlTest {
@@ -91,6 +93,63 @@ class DescriptorMapperYamlTest {
                 .containsExactly(new EnrichmentRule("a", "b"), new EnrichmentRule("c", "c"));
         assertThat(crawler.eventMapping().attributeList()).containsExactly("patientId", "encounterId");
         assertThat(crawler.eventMapping().domainMappingList()).containsExactly("PatientEvent");
+    }
+
+    @Test
+    void map_janitorWithAQuarantineTtl_keepsIt() {
+        String yaml = """
+                infrastructure:
+                  eventBus: {type: IN_MEMORY}
+                  inbox: {type: FILE_SYSTEM}
+                modules:
+                  - janitor:
+                      id: j1
+                      configuration:
+                        millisecondsTTL: 86400000
+                        millisecondsQuarantineTTL: 604800000
+                """;
+
+        JanitorDescriptor janitor = (JanitorDescriptor) DescriptorMapper.map(read(yaml.getBytes(StandardCharsets.UTF_8)))
+                .modules().get(0);
+
+        assertThat(janitor.configuration())
+                .containsEntry("millisecondsTTL", "86400000")
+                .containsEntry("millisecondsQuarantineTTL", "604800000");
+    }
+
+    @Test
+    void map_janitorWithAQuarantineTtlThatIsNotAnInteger_namesTheKey() {
+        String yaml = """
+                infrastructure:
+                  eventBus: {type: IN_MEMORY}
+                  inbox: {type: FILE_SYSTEM}
+                modules:
+                  - janitor:
+                      id: j1
+                      configuration:
+                        millisecondsQuarantineTTL: soon
+                """;
+
+        assertThatThrownBy(() -> DescriptorMapper.map(read(yaml.getBytes(StandardCharsets.UTF_8))))
+                .isInstanceOf(InvalidDescriptorException.class)
+                .hasMessageContaining("millisecondsQuarantineTTL must be an integer, got 'soon'");
+    }
+
+    @Test
+    void map_janitorWithoutAQuarantineTtl_isValid() {
+        String yaml = """
+                infrastructure:
+                  eventBus: {type: IN_MEMORY}
+                  inbox: {type: FILE_SYSTEM}
+                modules:
+                  - janitor:
+                      id: j1
+                """;
+
+        JanitorDescriptor janitor = (JanitorDescriptor) DescriptorMapper.map(read(yaml.getBytes(StandardCharsets.UTF_8)))
+                .modules().get(0);
+
+        assertThat(janitor.configuration()).doesNotContainKey("millisecondsQuarantineTTL");
     }
 
     private static RawSpoolNodeDescriptor read(byte[] yaml) {
