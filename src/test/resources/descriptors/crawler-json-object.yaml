@@ -1,0 +1,22 @@
+infrastructure:
+  eventBus:
+    type: IN_MEMORY
+
+  inbox:
+    type: FILE_SYSTEM
+    configuration:
+      path: "target/spool-test/inbox"
+
+modules:
+  - crawler:
+      type: POLL
+      id: json-object-crawler
+      source:
+        type: HTTP
+        configuration:
+          sourceId: json-object-api
+          url: "http://localhost:8000/event"
+          scheduleMilliseconds: 5000
+        mediaType: JSON_OBJECT
+      eventMapping:
+        namingConvention: SNAKE_CASE
