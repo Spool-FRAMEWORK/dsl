@@ -28,6 +28,16 @@ import software.spool.ingester.api.port.DataLakeWriter;
 /**
  * Builds the infrastructure ports a module asks for. A component is required only when a module asks
  * for it, so a node with just a crawler does not need a data lake in its descriptor.
+ *
+ * <p>The backend of each port is chosen by name: the descriptor says which one, as in {@code type: S3}, and this
+ * factory looks it up with {@link KnownPlugins}. {@code supports()} and {@code priority()} play no part in that. They
+ * only decide where nothing names the plugin: which {@code SpoolModuleProvider} builds a module, and the event bus
+ * behind an in-memory stream source.</p>
+ *
+ * <p>To replace a framework provider with your own, register it with the same name and a lower priority number than
+ * the framework's, and descriptors keep working unchanged. The framework uses 10, except the file system inbox
+ * providers, which use 0, and the in-memory event bus, which uses 100, so replacing those takes a number below
+ * theirs. Two providers with the same name and priority fail when they are registered, naming both classes.</p>
  */
 public final class InfrastructurePluginFactory {
 
