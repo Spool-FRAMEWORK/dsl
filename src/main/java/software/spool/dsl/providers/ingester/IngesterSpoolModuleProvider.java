@@ -48,6 +48,7 @@ public class IngesterSpoolModuleProvider implements SpoolModuleProvider {
                 .storesWith(InfrastructurePluginFactory.dataLakeWriter(infrastructure))
                 .readWith(InfrastructurePluginFactory.inboxReader(infrastructure))
                 .on(InfrastructurePluginFactory.tracedEventPublisher(infrastructure))
+                .quarantineStore(InfrastructurePluginFactory.quarantineStore(infrastructure))
                 .create();
     }
 
