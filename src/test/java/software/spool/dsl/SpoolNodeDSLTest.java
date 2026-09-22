@@ -64,6 +64,40 @@ class SpoolNodeDSLTest {
     }
 
     @Test
+    void fromDescriptor_ingesterWithoutQuarantineStore_saysWhichModuleNeedsIt() {
+        InfrastructureComponentDescriptor bus = new InfrastructureComponentDescriptor("IN_MEMORY", Map.of());
+        InfrastructureComponentDescriptor inbox = new InfrastructureComponentDescriptor("FILE_SYSTEM",
+            Map.of("path", "target/spool-test/inbox"));
+        InfrastructureComponentDescriptor lake = new InfrastructureComponentDescriptor("FILE_SYSTEM",
+            Map.of("path", "target/spool-test/datalake"));
+        InfrastructureDescriptor infra = new InfrastructureDescriptor(null, bus, inbox, lake);
+        SpoolNodeDescriptor descriptor = new SpoolNodeDescriptor(infra,
+            List.of(new IngesterDescriptor("REACTIVE", "synthea-ingester", Map.of())));
+
+        assertThatThrownBy(() -> SpoolNodeDSL.fromDescriptor(descriptor))
+            .isInstanceOf(InvalidDescriptorException.class)
+            .hasMessage("module 'synthea-ingester': infrastructure.quarantineStore is required");
+    }
+
+    @Test
+    void fromDescriptor_ingesterWithQuarantineStore_buildsTheNode() {
+        InfrastructureComponentDescriptor bus = new InfrastructureComponentDescriptor("IN_MEMORY", Map.of());
+        InfrastructureComponentDescriptor inbox = new InfrastructureComponentDescriptor("FILE_SYSTEM",
+            Map.of("path", "target/spool-test/inbox"));
+        InfrastructureComponentDescriptor lake = new InfrastructureComponentDescriptor("FILE_SYSTEM",
+            Map.of("path", "target/spool-test/datalake"));
+        InfrastructureComponentDescriptor quarantineStore = new InfrastructureComponentDescriptor("FILE_SYSTEM",
+            Map.of("path", "target/spool-test/quarantine"));
+        InfrastructureDescriptor infra = new InfrastructureDescriptor(null, bus, inbox, lake, quarantineStore);
+        SpoolNodeDescriptor descriptor = new SpoolNodeDescriptor(infra,
+            List.of(new IngesterDescriptor("REACTIVE", "synthea-ingester", Map.of())));
+
+        SpoolNode node = SpoolNodeDSL.fromDescriptor(descriptor);
+
+        assertThat(node).isNotNull();
+    }
+
+    @Test
     void fromDescriptor_s3DataLakeWithHalfTheCredentials_saysWhichKeyIsMissing() {
         InfrastructureComponentDescriptor bus = new InfrastructureComponentDescriptor("IN_MEMORY", Map.of());
         InfrastructureComponentDescriptor lake = new InfrastructureComponentDescriptor("S3", Map.of(

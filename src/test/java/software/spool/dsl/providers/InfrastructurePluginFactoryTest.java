@@ -96,4 +96,30 @@ class InfrastructurePluginFactoryTest {
         assertThatThrownBy(() -> InfrastructurePluginFactory.dataLakeWriter(withoutDataLake))
             .hasMessage("infrastructure.dataLake is required");
     }
+
+    @Test
+    void quarantineStore_withoutIt_namesTheKey() {
+        InfrastructureDescriptor withoutQuarantineStore = new InfrastructureDescriptor(null, BUS, BUS, BUS);
+
+        assertThatThrownBy(() -> InfrastructurePluginFactory.quarantineStore(withoutQuarantineStore))
+            .hasMessage("infrastructure.quarantineStore is required");
+    }
+
+    @Test
+    void quarantineStore_withAnUnknownType_namesTheKeyAndTheKnownOnes() {
+        InfrastructureDescriptor unknown = new InfrastructureDescriptor(null, BUS, BUS, BUS,
+            new InfrastructureComponentDescriptor("NOPE", Map.of()));
+
+        assertThatThrownBy(() -> InfrastructurePluginFactory.quarantineStore(unknown))
+            .hasMessageStartingWith("infrastructure.quarantineStore.type 'NOPE' is not a known quarantine store. Known: ")
+            .hasMessageContaining("FILE_SYSTEM");
+    }
+
+    @Test
+    void quarantineStore_withAKnownType_returnsIt() {
+        InfrastructureDescriptor withQuarantineStore = new InfrastructureDescriptor(null, BUS, BUS, BUS,
+            new InfrastructureComponentDescriptor("FILE_SYSTEM", Map.of("path", "target/spool-test/quarantine")));
+
+        assertThat(InfrastructurePluginFactory.quarantineStore(withQuarantineStore)).isNotNull();
+    }
 }

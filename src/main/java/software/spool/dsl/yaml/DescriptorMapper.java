@@ -35,7 +35,8 @@ public final class DescriptorMapper {
                 raw.watchdog(),
                 toComponent("infrastructure.eventBus", raw.eventBus()),
                 toComponent("infrastructure.inbox", raw.inbox()),
-                toComponent("infrastructure.dataLake", raw.dataLake())
+                toComponent("infrastructure.dataLake", raw.dataLake()),
+                toComponent("infrastructure.quarantineStore", raw.quarantineStore())
         );
     }
 

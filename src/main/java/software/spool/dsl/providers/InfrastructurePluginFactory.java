@@ -22,8 +22,10 @@ import software.spool.infrastructure.spi.provider.inbox.InboxEnvelopeRemoverProv
 import software.spool.infrastructure.spi.provider.inbox.InboxReaderProvider;
 import software.spool.infrastructure.spi.provider.inbox.InboxUpdaterProvider;
 import software.spool.infrastructure.spi.provider.inbox.InboxWriterProvider;
+import software.spool.infrastructure.spi.provider.quarantine.QuarantineStoreProvider;
 import software.spool.infrastructure.spi.provider.serde.NormalizerProvider;
 import software.spool.ingester.api.port.DataLakeWriter;
+import software.spool.ingester.api.port.QuarantineStore;
 
 /**
  * Builds the infrastructure ports a module asks for. A component is required only when a module asks
@@ -72,6 +74,12 @@ public final class InfrastructurePluginFactory {
         InfrastructureComponentDescriptor dataLake = required(infra.dataLake(), "dataLake");
         return KnownPlugins.get(DataLakeWriterProvider.class, dataLake.pluginName(), "infrastructure.dataLake.type", "data lake writer")
                 .create(dataLake.toPluginConfiguration());
+    }
+
+    public static QuarantineStore quarantineStore(InfrastructureDescriptor infra) {
+        InfrastructureComponentDescriptor quarantineStore = required(infra.quarantineStore(), "quarantineStore");
+        return KnownPlugins.get(QuarantineStoreProvider.class, quarantineStore.pluginName(), "infrastructure.quarantineStore.type", "quarantine store")
+                .create(quarantineStore.toPluginConfiguration());
     }
 
     public static CrawlerPorts crawlerPorts(InfrastructureDescriptor infra) {
