@@ -1,11 +1,14 @@
 package software.spool.dsl.providers;
 
 import org.junit.jupiter.api.Test;
+import software.spool.core.port.serde.EnrichmentRule;
+import software.spool.crawler.internal.utils.factory.Normalizer;
 import software.spool.dsl.InvalidDescriptorException;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureComponentDescriptor;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
 import software.spool.dsl.descriptors.module.crawler.source.SourceDescriptor;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Map;
 
@@ -18,6 +21,11 @@ class InfrastructurePluginFactoryTest {
 
     private static SourceDescriptor source(String mediaType) {
         return new SourceDescriptor("HTTP", "s", Map.of(), mediaType, "", List.of());
+    }
+
+    @SuppressWarnings("unchecked")
+    private static Normalizer<byte[]> bytesNormalizer(SourceDescriptor source) {
+        return (Normalizer<byte[]>) InfrastructurePluginFactory.normalizer(source);
     }
 
     @Test
@@ -70,6 +78,30 @@ class InfrastructurePluginFactoryTest {
     @Test
     void normalizer_withAKnownMediaType_returnsIt() {
         assertThat(InfrastructurePluginFactory.normalizer(source("JSON_ARRAY"))).isNotNull();
+    }
+
+    @Test
+    void normalizer_withAJsonObject_turnsOneObjectIntoOneRecord() {
+        Normalizer<byte[]> normalizer = bytesNormalizer(source("JSON_OBJECT"));
+
+        List<String> records = normalizer.normalize("{\"id\":1}".getBytes(StandardCharsets.UTF_8))
+            .map(record -> new String(record, StandardCharsets.UTF_8))
+            .toList();
+
+        assertThat(records).containsExactly("{\"id\":1}");
+    }
+
+    @Test
+    void normalizer_withAJsonObjectAndARootPathAndARule_keepsTheObjectAndAddsTheField() {
+        SourceDescriptor source = new SourceDescriptor("HTTP", "s", Map.of(), "JSON_OBJECT", "data",
+            List.of(new EnrichmentRule("meta.origin", "origin")));
+        Normalizer<byte[]> normalizer = bytesNormalizer(source);
+
+        List<String> records = normalizer.normalize("{\"data\":{\"id\":1},\"meta\":{\"origin\":\"x\"}}".getBytes(StandardCharsets.UTF_8))
+            .map(record -> new String(record, StandardCharsets.UTF_8))
+            .toList();
+
+        assertThat(records).containsExactly("{\"id\":1,\"origin\":\"x\"}");
     }
 
     @Test

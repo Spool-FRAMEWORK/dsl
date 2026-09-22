@@ -41,6 +41,13 @@ class SpoolNodeDSLTest {
     }
 
     @Test
+    void fromDescriptor_crawlerWhoseSourceIsASingleJsonObject_buildsTheNode() throws IOException {
+        SpoolNode node = SpoolNodeDSL.fromDescriptor("/descriptors/crawler-json-object.yaml");
+
+        assertThat(node).isNotNull();
+    }
+
+    @Test
     void fromDescriptor_emptyModules_returnsNode() {
         InfrastructureComponentDescriptor component = new InfrastructureComponentDescriptor("in-memory", Map.of());
         InfrastructureDescriptor infra = new InfrastructureDescriptor(null, component, component, component);
