@@ -1,5 +1,6 @@
 package software.spool.dsl.providers;
 
+import software.spool.core.port.quarantine.QuarantineRepository;
 import software.spool.core.adapter.jackson.RecordSerializerFactory;
 import software.spool.core.adapter.otel.OpenTelemetryTracedEventBus;
 import software.spool.core.port.bus.EventBus;
@@ -22,10 +23,9 @@ import software.spool.infrastructure.spi.provider.inbox.InboxEnvelopeRemoverProv
 import software.spool.infrastructure.spi.provider.inbox.InboxReaderProvider;
 import software.spool.infrastructure.spi.provider.inbox.InboxUpdaterProvider;
 import software.spool.infrastructure.spi.provider.inbox.InboxWriterProvider;
-import software.spool.infrastructure.spi.provider.quarantine.QuarantineStoreProvider;
+import software.spool.infrastructure.spi.provider.quarantine.QuarantineRepositoryProvider;
 import software.spool.infrastructure.spi.provider.serde.NormalizerProvider;
 import software.spool.ingester.api.port.DataLakeWriter;
-import software.spool.ingester.api.port.QuarantineStore;
 
 /**
  * Builds the infrastructure ports a module asks for. A component is required only when a module asks
@@ -86,10 +86,10 @@ public final class InfrastructurePluginFactory {
                 .create(dataLake.toPluginConfiguration());
     }
 
-    public static QuarantineStore quarantineStore(InfrastructureDescriptor infra) {
-        InfrastructureComponentDescriptor quarantineStore = required(infra.quarantineStore(), "quarantineStore");
-        return KnownPlugins.get(QuarantineStoreProvider.class, quarantineStore.pluginName(), "infrastructure.quarantineStore.type", "quarantine store")
-                .create(quarantineStore.toPluginConfiguration());
+    public static QuarantineRepository quarantineRepository(InfrastructureDescriptor infra) {
+        InfrastructureComponentDescriptor quarantineRepository = required(infra.quarantineRepository(), "quarantineRepository");
+        return KnownPlugins.get(QuarantineRepositoryProvider.class, quarantineRepository.pluginName(), "infrastructure.quarantineRepository.type", "quarantine repository")
+                .create(quarantineRepository.toPluginConfiguration());
     }
 
     public static CrawlerPorts crawlerPorts(InfrastructureDescriptor infra) {

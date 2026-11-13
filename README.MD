@@ -150,6 +150,7 @@ SpoolRuntime.builder()
 | `eventBus.type` | Event bus implementation (`kafka`, `inMemory`). |
 | `inbox.*` | Inbox storage configuration (see [Infrastructure Options](#infrastructure-options)). |
 | `dataLake.*` | Data lake storage configuration. |
+| `quarantineRepository.*` | Where the janitor keeps what is in quarantine (see [Quarantine](#quarantine)). Required by the janitor. |
 
 ---
 
@@ -199,6 +200,31 @@ Runs on a schedule to keep the inbox healthy — republishes stuck envelopes, qu
 
 ---
 
+### Quarantine
+
+An envelope goes to quarantine when the ingester finds that its payload fails a critical validation, or when the janitor has republished it too many times without success. The janitor moves it to `QUARANTINED` in the inbox and keeps one record per envelope in the quarantine repository:
+
+| Field | Content |
+|---|---|
+| `envelope` | The whole envelope as it was in the inbox: key, metadata (source, correlation id...), media type, payload, retries and dates. |
+| `reason` | `VALIDATION_FAILED` or `RETRIES_EXHAUSTED`. |
+| `violations` | The validation errors, empty when the retries ran out. |
+| `quarantinedAt` | When it was quarantined. |
+
+```yaml
+infrastructure:
+  quarantineRepository:
+    type: FILE_SYSTEM
+    configuration:
+      path: "/spool/quarantine"   # one JSON file per envelope, named after its key
+```
+
+Only the janitor uses it; the ingester just publishes `EnvelopeQuarantined`. From the record, an envelope can be republished as it was, republished with a corrected payload (under a new key, with the original one in its `CORRECTED_FROM` metadata) or purged. Each of these deletes the record and publishes `EnvelopeRepublished` or `EnvelopePurged`. With `millisecondsQuarantineTTL` in the janitor configuration, what has been in quarantine for longer is purged.
+
+The old `infrastructure.quarantineStore` key is no longer accepted.
+
+---
+
 ### Ingester
 
 Consumes events from the bus and writes envelopes to the data lake.
@@ -226,6 +252,7 @@ Consumes events from the bus and writes envelopes to the data lake.
 | `eventBus` | `kafka` · `inMemory` |
 | `inbox` | `s3` · `filesystem` · `inMemory` · `custom` |
 | `dataLake` | `s3` · `filesystem` · `inMemory` · `custom` |
+| `quarantineRepository` | `FILE_SYSTEM` |
 
 Every component supports a `custom` type backed by the `PluginRegistry` SPI (see `spool-infrastructure`):
 

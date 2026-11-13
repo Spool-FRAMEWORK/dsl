@@ -5,10 +5,11 @@ public record RawInfrastructureDescriptor(
         RawComponentDescriptor eventBus,
         RawComponentDescriptor inbox,
         RawComponentDescriptor dataLake,
+        RawComponentDescriptor quarantineRepository,
         RawComponentDescriptor quarantineStore
 ) {
     public RawInfrastructureDescriptor(String watchdog, RawComponentDescriptor eventBus,
                                        RawComponentDescriptor inbox, RawComponentDescriptor dataLake) {
-        this(watchdog, eventBus, inbox, dataLake, null);
+        this(watchdog, eventBus, inbox, dataLake, null, null);
     }
 }

@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import software.spool.core.adapter.jackson.PayloadDeserializerFactory;
 import software.spool.core.port.serde.EnrichmentRule;
 import software.spool.core.port.serde.NamingConvention;
+import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
 import software.spool.dsl.InvalidDescriptorException;
 import software.spool.dsl.descriptors.SpoolNodeDescriptor;
 import software.spool.dsl.descriptors.module.crawler.CrawlerDescriptor;
@@ -93,6 +94,44 @@ class DescriptorMapperYamlTest {
                 .containsExactly(new EnrichmentRule("a", "b"), new EnrichmentRule("c", "c"));
         assertThat(crawler.eventMapping().attributeList()).containsExactly("patientId", "encounterId");
         assertThat(crawler.eventMapping().domainMappingList()).containsExactly("PatientEvent");
+    }
+
+    @Test
+    void map_quarantineRepository_keepsItsTypeAndConfiguration() {
+        String yaml = """
+                infrastructure:
+                  eventBus: {type: IN_MEMORY}
+                  quarantineRepository:
+                    type: FILE_SYSTEM
+                    configuration:
+                      path: "/spool/quarantine"
+                modules:
+                  - janitor:
+                      id: j1
+                """;
+
+        InfrastructureDescriptor infrastructure = DescriptorMapper.map(read(yaml.getBytes(StandardCharsets.UTF_8))).infrastructure();
+
+        assertThat(infrastructure.quarantineRepository().pluginName()).isEqualTo("FILE_SYSTEM");
+        assertThat(infrastructure.quarantineRepository().configuration()).containsEntry("path", "/spool/quarantine");
+    }
+
+    @Test
+    void map_quarantineStore_saysToUseQuarantineRepository() {
+        String yaml = """
+                infrastructure:
+                  eventBus: {type: IN_MEMORY}
+                  quarantineStore:
+                    type: FILE_SYSTEM
+                modules:
+                  - janitor:
+                      id: j1
+                """;
+
+        assertThatThrownBy(() -> DescriptorMapper.map(read(yaml.getBytes(StandardCharsets.UTF_8))))
+                .isInstanceOf(InvalidDescriptorException.class)
+                .hasMessageContaining("infrastructure.quarantineStore")
+                .hasMessageContaining("infrastructure.quarantineRepository");
     }
 
     @Test

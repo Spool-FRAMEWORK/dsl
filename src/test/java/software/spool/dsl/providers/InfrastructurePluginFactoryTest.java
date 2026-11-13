@@ -130,28 +130,28 @@ class InfrastructurePluginFactoryTest {
     }
 
     @Test
-    void quarantineStore_withoutIt_namesTheKey() {
-        InfrastructureDescriptor withoutQuarantineStore = new InfrastructureDescriptor(null, BUS, BUS, BUS);
+    void quarantineRepository_withoutIt_namesTheKey() {
+        InfrastructureDescriptor withoutQuarantineRepository = new InfrastructureDescriptor(null, BUS, BUS, BUS);
 
-        assertThatThrownBy(() -> InfrastructurePluginFactory.quarantineStore(withoutQuarantineStore))
-            .hasMessage("infrastructure.quarantineStore is required");
+        assertThatThrownBy(() -> InfrastructurePluginFactory.quarantineRepository(withoutQuarantineRepository))
+            .hasMessage("infrastructure.quarantineRepository is required");
     }
 
     @Test
-    void quarantineStore_withAnUnknownType_namesTheKeyAndTheKnownOnes() {
+    void quarantineRepository_withAnUnknownType_namesTheKeyAndTheKnownOnes() {
         InfrastructureDescriptor unknown = new InfrastructureDescriptor(null, BUS, BUS, BUS,
             new InfrastructureComponentDescriptor("NOPE", Map.of()));
 
-        assertThatThrownBy(() -> InfrastructurePluginFactory.quarantineStore(unknown))
-            .hasMessageStartingWith("infrastructure.quarantineStore.type 'NOPE' is not a known quarantine store. Known: ")
+        assertThatThrownBy(() -> InfrastructurePluginFactory.quarantineRepository(unknown))
+            .hasMessageStartingWith("infrastructure.quarantineRepository.type 'NOPE' is not a known quarantine repository. Known: ")
             .hasMessageContaining("FILE_SYSTEM");
     }
 
     @Test
-    void quarantineStore_withAKnownType_returnsIt() {
-        InfrastructureDescriptor withQuarantineStore = new InfrastructureDescriptor(null, BUS, BUS, BUS,
+    void quarantineRepository_withAKnownType_returnsIt() {
+        InfrastructureDescriptor withQuarantineRepository = new InfrastructureDescriptor(null, BUS, BUS, BUS,
             new InfrastructureComponentDescriptor("FILE_SYSTEM", Map.of("path", "target/spool-test/quarantine")));
 
-        assertThat(InfrastructurePluginFactory.quarantineStore(withQuarantineStore)).isNotNull();
+        assertThat(InfrastructurePluginFactory.quarantineRepository(withQuarantineRepository)).isNotNull();
     }
 }

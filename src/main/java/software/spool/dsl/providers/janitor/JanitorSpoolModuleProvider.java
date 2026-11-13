@@ -44,6 +44,7 @@ public class JanitorSpoolModuleProvider implements SpoolModuleProvider {
                 .removeWith(InfrastructurePluginFactory.inboxEnvelopeRemover(infrastructure))
                 .on(InfrastructurePluginFactory.tracedEventPublisher(infrastructure))
                 .subscribeWith(bus)
+                .quarantineIn(InfrastructurePluginFactory.quarantineRepository(infrastructure))
                 .every(buildInterval(janitor))
                 .withMillisecondsThreshold(buildWorkers(janitor))
                 .withMillisecondsTtl(buildTtl(janitor))

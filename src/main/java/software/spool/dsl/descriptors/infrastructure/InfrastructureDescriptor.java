@@ -5,7 +5,7 @@ public record InfrastructureDescriptor(
         InfrastructureComponentDescriptor eventBus,
         InfrastructureComponentDescriptor inbox,
         InfrastructureComponentDescriptor dataLake,
-        InfrastructureComponentDescriptor quarantineStore
+        InfrastructureComponentDescriptor quarantineRepository
 ) {
     public InfrastructureDescriptor(String watchdog, InfrastructureComponentDescriptor eventBus,
                                     InfrastructureComponentDescriptor inbox, InfrastructureComponentDescriptor dataLake) {

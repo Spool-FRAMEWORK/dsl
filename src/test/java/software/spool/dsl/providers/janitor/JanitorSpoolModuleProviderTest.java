@@ -18,7 +18,8 @@ class JanitorSpoolModuleProviderTest {
         null,
         new InfrastructureComponentDescriptor("IN_MEMORY", Map.of()),
         new InfrastructureComponentDescriptor("FILE_SYSTEM", Map.of("path", "target/spool-test/inbox")),
-        null);
+        null,
+        new InfrastructureComponentDescriptor("FILE_SYSTEM", Map.of("path", "target/spool-test/quarantine")));
 
     @Test
     void buildQuarantineTtl_withTheKey_returnsItAsAnInteger() {

@@ -14,6 +14,11 @@ infrastructure:
     configuration:
       path: "D:/spool/datalake"
 
+  quarantineRepository:
+    type: FILE_SYSTEM
+    configuration:
+      path: "D:/spool/quarantine"
+
 modules:
   - crawler:
       type: POLL

@@ -31,12 +31,16 @@ public final class DescriptorMapper {
 
     private static InfrastructureDescriptor toInfrastructure(RawInfrastructureDescriptor raw) {
         DescriptorReader.require("infrastructure", raw);
+        if (raw.quarantineStore() != null) {
+            throw new InvalidDescriptorException("infrastructure.quarantineStore",
+                    "is no longer supported: the janitor keeps the quarantine in infrastructure.quarantineRepository");
+        }
         return new InfrastructureDescriptor(
                 raw.watchdog(),
                 toComponent("infrastructure.eventBus", raw.eventBus()),
                 toComponent("infrastructure.inbox", raw.inbox()),
                 toComponent("infrastructure.dataLake", raw.dataLake()),
-                toComponent("infrastructure.quarantineStore", raw.quarantineStore())
+                toComponent("infrastructure.quarantineRepository", raw.quarantineRepository())
         );
     }
 
