@@ -52,6 +52,25 @@ class JanitorSpoolModuleProviderTest {
         assertThat(provider.create(configurationOf(new JanitorDescriptor("j1", Map.of())))).isNotNull();
     }
 
+    @Test
+    void buildQuarantineRetention_withTheKey_returnsItAsALongBeyondTheIntegerRange() {
+        JanitorDescriptor janitor = new JanitorDescriptor("j1", Map.of("millisecondsQuarantineRetention", "7776000000"));
+
+        assertThat(provider.buildQuarantineRetention(janitor)).isEqualTo(7_776_000_000L);
+    }
+
+    @Test
+    void buildQuarantineRetention_withoutTheKey_isNullSoResolvedRecordsAreKept() {
+        assertThat(provider.buildQuarantineRetention(new JanitorDescriptor("j1", Map.of()))).isNull();
+    }
+
+    @Test
+    void create_withAQuarantineRetention_buildsTheModule() {
+        JanitorDescriptor janitor = new JanitorDescriptor("j1", Map.of("millisecondsQuarantineRetention", "7776000000"));
+
+        assertThat(provider.create(configurationOf(janitor))).isNotNull();
+    }
+
     private static PluginConfiguration configurationOf(JanitorDescriptor janitor) {
         return PluginConfiguration.builder()
             .with("descriptor", janitor)

@@ -49,6 +49,7 @@ public class JanitorSpoolModuleProvider implements SpoolModuleProvider {
                 .withMillisecondsThreshold(buildWorkers(janitor))
                 .withMillisecondsTtl(buildTtl(janitor))
                 .withMillisecondsQuarantineTtl(buildQuarantineTtl(janitor))
+                .withMillisecondsQuarantineRetention(buildQuarantineRetention(janitor))
                 .create();
     }
 
@@ -70,5 +71,10 @@ public class JanitorSpoolModuleProvider implements SpoolModuleProvider {
     Integer buildQuarantineTtl(JanitorDescriptor janitor) {
         String ttl = janitor.configuration().get("millisecondsQuarantineTTL");
         return ttl != null ? Integer.parseInt(ttl) : null;
+    }
+
+    Long buildQuarantineRetention(JanitorDescriptor janitor) {
+        String retention = janitor.configuration().get("millisecondsQuarantineRetention");
+        return retention != null ? Long.parseLong(retention) : null;
     }
 }

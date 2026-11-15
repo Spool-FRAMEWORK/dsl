@@ -44,3 +44,4 @@ modules:
         milliseconds: 1000
         millisecondsThreshold: 10000
         millisecondsTTL: 100000
+        millisecondsQuarantineRetention: 2592000000

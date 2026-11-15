@@ -23,6 +23,7 @@ public class JanitorModuleDescriptorProvider implements ModuleDescriptorProvider
         configuration.optional("millisecondsThreshold", ValueParsers.INTEGER);
         configuration.optional("millisecondsTTL", ValueParsers.INTEGER);
         configuration.optional("millisecondsQuarantineTTL", ValueParsers.INTEGER);
+        configuration.optional("millisecondsQuarantineRetention", ValueParsers.LONG);
         return new JanitorDescriptor(id, janitor.stringMap("configuration"));
     }
 }

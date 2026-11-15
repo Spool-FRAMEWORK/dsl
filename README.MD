@@ -202,24 +202,30 @@ Runs on a schedule to keep the inbox healthy — republishes stuck envelopes, qu
 
 ### Quarantine
 
-An envelope goes to quarantine when the ingester finds that its payload fails a critical validation, or when the janitor has republished it too many times without success. The janitor moves it to `QUARANTINED` in the inbox and keeps one record per envelope in the quarantine repository:
+An envelope goes to quarantine when the ingester finds that its payload fails a critical validation, when the janitor has republished it too many times without success, or when the mounter rejects it on its way from bronze to silver. The quarantine repository keeps one record per envelope:
 
 | Field | Content |
 |---|---|
-| `envelope` | The whole envelope as it was in the inbox: key, metadata (source, correlation id...), media type, payload, retries and dates. |
-| `reason` | `VALIDATION_FAILED` or `RETRIES_EXHAUSTED`. |
-| `violations` | The validation errors, empty when the retries ran out. |
-| `quarantinedAt` | When it was quarantined. |
+| `envelope` | The whole envelope: key, metadata (source, correlation id...), media type, payload, retries and dates. |
+| `location` | Where the envelope stayed: `INBOX`, or `BRONZE` with its partition. |
+| `history` | Every time the envelope came into quarantine: its `reason` (`VALIDATION_FAILED` or `RETRIES_EXHAUSTED`), its `violations`, `quarantinedAt`, and how that time was resolved (`PENDING`, `REPUBLISHED`, `CORRECTED` with the new key, or `PURGED`). The last entry is the current one. |
 
 ```yaml
 infrastructure:
   quarantineRepository:
     type: FILE_SYSTEM
     configuration:
-      path: "/spool/quarantine"   # one JSON file per envelope, named after its key
+      path: "/spool/quarantine"   # one folder per status, one JSON file per envelope named after its key
 ```
 
-Only the janitor uses it; the ingester just publishes `EnvelopeQuarantined`. From the record, an envelope can be republished as it was, republished with a corrected payload (under a new key, with the original one in its `CORRECTED_FROM` metadata) or purged. Each of these deletes the record and publishes `EnvelopeRepublished` or `EnvelopePurged`. With `millisecondsQuarantineTTL` in the janitor configuration, what has been in quarantine for longer is purged.
+The janitor records what comes from the inbox and the mounter what it rejects; the ingester just publishes `EnvelopeQuarantined`. A pending record can be republished as it was, republished with a corrected payload (under a new key, with the original one in its `CORRECTED_FROM` metadata) or purged, even after the inbox has removed the envelope. Each of these marks the record and publishes `EnvelopeRepublished` or `EnvelopePurged`. If a resolved envelope comes back into quarantine, its record is reopened with a new entry.
+
+Two settings in the janitor configuration:
+
+| Key | Effect |
+|---|---|
+| `millisecondsQuarantineTTL` | Removes from the inbox what has been in `QUARANTINED` for longer. Its record stays pending. |
+| `millisecondsQuarantineRetention` | Deletes the records resolved longer ago. Pending records are never deleted. Without it, resolved records are kept. |
 
 The old `infrastructure.quarantineStore` key is no longer accepted.
 
