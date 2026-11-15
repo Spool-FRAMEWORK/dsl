@@ -227,6 +227,8 @@ Two settings in the janitor configuration:
 | `millisecondsQuarantineTTL` | Removes from the inbox what has been in `QUARANTINED` for longer. Its record stays pending. |
 | `millisecondsQuarantineRetention` | Deletes the records resolved longer ago. Pending records are never deleted. Without it, resolved records are kept. |
 
+A record the mounter rejected stays in bronze no longer: the mounter removes it from its bronze partition after keeping the record. Resolving it writes the envelope back to that partition (or the corrected one, under its new key) and publishes `EnvelopePersisted` so it is mounted again; the inbox is not touched. The janitor writes to the `infrastructure.dataLake`; without one, those records are skipped.
+
 The old `infrastructure.quarantineStore` key is no longer accepted.
 
 ---

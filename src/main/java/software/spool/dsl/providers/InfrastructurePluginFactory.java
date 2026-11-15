@@ -18,7 +18,9 @@ import software.spool.dsl.descriptors.module.crawler.source.SourceDescriptor;
 import software.spool.dsl.reader.DescriptorReader;
 import software.spool.infrastructure.spi.provider.PluginConfiguration;
 import software.spool.infrastructure.spi.provider.bus.EventBusProvider;
+import software.spool.infrastructure.spi.provider.dataLake.BronzeRepositoryProvider;
 import software.spool.infrastructure.spi.provider.dataLake.DataLakeWriterProvider;
+import software.spool.core.port.datalake.BronzeRepository;
 import software.spool.infrastructure.spi.provider.inbox.InboxEnvelopeRemoverProvider;
 import software.spool.infrastructure.spi.provider.inbox.InboxReaderProvider;
 import software.spool.infrastructure.spi.provider.inbox.InboxUpdaterProvider;
@@ -83,6 +85,12 @@ public final class InfrastructurePluginFactory {
     public static DataLakeWriter dataLakeWriter(InfrastructureDescriptor infra) {
         InfrastructureComponentDescriptor dataLake = required(infra.dataLake(), "dataLake");
         return KnownPlugins.get(DataLakeWriterProvider.class, dataLake.pluginName(), "infrastructure.dataLake.type", "data lake writer")
+                .create(dataLake.toPluginConfiguration());
+    }
+
+    public static BronzeRepository bronzeRepository(InfrastructureDescriptor infra) {
+        InfrastructureComponentDescriptor dataLake = required(infra.dataLake(), "dataLake");
+        return KnownPlugins.get(BronzeRepositoryProvider.class, dataLake.pluginName(), "infrastructure.dataLake.type", "bronze repository")
                 .create(dataLake.toPluginConfiguration());
     }
 

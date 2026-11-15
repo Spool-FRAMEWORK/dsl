@@ -7,6 +7,7 @@ import software.spool.dsl.descriptors.module.janitor.JanitorDescriptor;
 import software.spool.dsl.providers.InfrastructurePluginFactory;
 import software.spool.dsl.providers.SpoolModuleProvider;
 import software.spool.janitor.api.builder.JanitorBuilderFactory;
+import software.spool.janitor.api.builder.PollingJanitorBuilder;
 import software.spool.infrastructure.spi.SpoolPlugin;
 import software.spool.infrastructure.spi.provider.PluginConfiguration;
 
@@ -37,7 +38,7 @@ public class JanitorSpoolModuleProvider implements SpoolModuleProvider {
         JanitorDescriptor janitor = configuration.require("descriptor", JanitorDescriptor.class);
         InfrastructureDescriptor infrastructure = configuration.require("infrastructure", InfrastructureDescriptor.class);
         var bus = InfrastructurePluginFactory.eventBus(infrastructure);
-        return JanitorBuilderFactory.watchdog(infrastructure.watchdog(), janitor.id())
+        PollingJanitorBuilder builder = JanitorBuilderFactory.watchdog(infrastructure.watchdog(), janitor.id())
                 .polling()
                 .from(InfrastructurePluginFactory.inboxReader(infrastructure))
                 .with(InfrastructurePluginFactory.inboxUpdater(infrastructure))
@@ -49,8 +50,11 @@ public class JanitorSpoolModuleProvider implements SpoolModuleProvider {
                 .withMillisecondsThreshold(buildWorkers(janitor))
                 .withMillisecondsTtl(buildTtl(janitor))
                 .withMillisecondsQuarantineTtl(buildQuarantineTtl(janitor))
-                .withMillisecondsQuarantineRetention(buildQuarantineRetention(janitor))
-                .create();
+                .withMillisecondsQuarantineRetention(buildQuarantineRetention(janitor));
+        if (infrastructure.dataLake() != null) {
+            builder.rewriteBronzeIn(InfrastructurePluginFactory.bronzeRepository(infrastructure));
+        }
+        return builder.create();
     }
 
     private Duration buildInterval(JanitorDescriptor janitor) {
