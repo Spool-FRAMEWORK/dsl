@@ -1,5 +1,6 @@
 package software.spool.dsl;
 
+import software.spool.dsl.providers.authentication.RequestAuthenticators;
 import software.spool.core.adapter.otel.OpenTelemetryMetricsRegistry;
 import software.spool.core.model.spool.SpoolNode;
 import software.spool.dsl.descriptors.SpoolNodeDescriptor;
@@ -36,9 +37,10 @@ public abstract class SpoolNodeDSL {
     }
 
     public static SpoolNode fromDescriptor(SpoolNodeDescriptor descriptor) {
+        RequestAuthenticators authentication = RequestAuthenticators.from(descriptor.authentication());
         SpoolNode node = SpoolNode.create(new OpenTelemetryMetricsRegistry());
         descriptor.modules().stream()
-                .map(m -> ModuleProviderRegistry.build(m, descriptor.infrastructure()))
+                .map(m -> ModuleProviderRegistry.build(m, descriptor.infrastructure(), authentication))
                 .forEach(node::register);
         return node;
     }

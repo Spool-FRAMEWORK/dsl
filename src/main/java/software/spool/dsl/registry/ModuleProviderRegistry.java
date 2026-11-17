@@ -1,5 +1,6 @@
 package software.spool.dsl.registry;
 
+import software.spool.dsl.providers.authentication.RequestAuthenticators;
 import software.spool.core.model.spool.SpoolModule;
 import software.spool.dsl.InvalidDescriptorException;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
@@ -13,13 +14,26 @@ import java.util.stream.Collectors;
 
 public final class ModuleProviderRegistry {
 
+    public static final String AUTHENTICATION = "authentication";
+
     private ModuleProviderRegistry() {}
 
     public static SpoolModule build(SpoolModuleDescriptor descriptor,
                                     InfrastructureDescriptor infrastructure) {
+        return build(descriptor, infrastructure, RequestAuthenticators.none());
+    }
+
+    /**
+     * Builds a module, giving its provider the authentication providers of the descriptor in the context key
+     * {@value #AUTHENTICATION}, so that an HTTP entry of the module can find the one it names.
+     */
+    public static SpoolModule build(SpoolModuleDescriptor descriptor,
+                                    InfrastructureDescriptor infrastructure,
+                                    RequestAuthenticators authentication) {
         PluginConfiguration config = PluginConfiguration.builder()
                 .with("descriptor", descriptor)
                 .with("infrastructure", infrastructure)
+                .with(AUTHENTICATION, authentication)
                 .build();
 
         try {

@@ -2,6 +2,7 @@ package software.spool.dsl.yaml;
 
 import software.spool.dsl.InvalidDescriptorException;
 import software.spool.dsl.descriptors.SpoolNodeDescriptor;
+import software.spool.dsl.descriptors.authentication.AuthenticationDescriptor;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureComponentDescriptor;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
 import software.spool.dsl.descriptors.module.SpoolModuleDescriptor;
@@ -14,6 +15,7 @@ import software.spool.infrastructure.PluginRegistry;
 import software.spool.infrastructure.PluginResolver;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -25,8 +27,18 @@ public final class DescriptorMapper {
     public static SpoolNodeDescriptor map(RawSpoolNodeDescriptor raw) {
         return new SpoolNodeDescriptor(
                 toInfrastructure(raw.infrastructure()),
-                toModules(raw.modules())
+                toModules(raw.modules()),
+                toAuthentication(raw.authentication())
         );
+    }
+
+    private static Map<String, AuthenticationDescriptor> toAuthentication(Map<String, RawComponentDescriptor> raw) {
+        if (raw == null) return Map.of();
+        Map<String, AuthenticationDescriptor> providers = new LinkedHashMap<>();
+        raw.forEach((name, provider) -> providers.put(name, new AuthenticationDescriptor(
+                DescriptorReader.require("authentication." + name + ".type", provider.type()),
+                provider.configuration() != null ? provider.configuration() : Map.of())));
+        return providers;
     }
 
     private static InfrastructureDescriptor toInfrastructure(RawInfrastructureDescriptor raw) {
