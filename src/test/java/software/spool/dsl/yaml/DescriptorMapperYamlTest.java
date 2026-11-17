@@ -22,8 +22,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class DescriptorMapperYamlTest {
 
     @Test
-    void map_theSampleDescriptorShippedWithTheDsl_keepsEveryValue() throws IOException {
-        byte[] yaml = getClass().getResourceAsStream("/Spool.yaml").readAllBytes();
+    void map_theSampleDescriptor_keepsEveryValue() throws IOException {
+        byte[] yaml = getClass().getResourceAsStream("/descriptors/sample-node.yaml").readAllBytes();
 
         SpoolNodeDescriptor node = DescriptorMapper.map(read(yaml));
 
