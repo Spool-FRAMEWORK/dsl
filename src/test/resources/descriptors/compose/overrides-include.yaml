@@ -1,0 +1,8 @@
+include:
+  - shared/infrastructure.yaml
+
+infrastructure:
+  eventBus:
+    type: KAFKA
+
+modules: []

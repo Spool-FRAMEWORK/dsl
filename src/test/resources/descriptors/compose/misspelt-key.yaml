@@ -1,0 +1,5 @@
+infrastructure:
+  evenBus:
+    type: IN_MEMORY
+
+modules: []

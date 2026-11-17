@@ -1,0 +1,3 @@
+include:
+  - shared/infrastructure.yaml
+  - shared/broken-modules.yaml

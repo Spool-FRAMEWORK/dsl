@@ -1,0 +1,34 @@
+infrastructure:
+  eventBus:
+    type: IN_MEMORY
+  inbox:
+    type: FILE_SYSTEM
+    configuration:
+      path: "target/spool-test/inbox"
+
+modules:
+  - ingester:
+      id: first-ingester
+      type: REACTIVE
+  - ingester:
+      id: second-ingester
+      type: REACTIVE
+
+profiles:
+  production:
+    infrastructure:
+      eventBus:
+        type: KAFKA
+        configuration:
+          bootstrapServers: "localhost:9092"
+  single:
+    modules:
+      - ingester:
+          id: only-ingester
+          type: REACTIVE
+  staging: {}
+  broken:
+    modules:
+      - crawler:
+          type: POLL
+          id: broken-crawler

@@ -1,0 +1,7 @@
+infrastructure:
+  eventBus:
+    type: IN_MEMORY
+  inbox:
+    type: FILE_SYSTEM
+    configuration:
+      path: "target/spool-test/inbox"

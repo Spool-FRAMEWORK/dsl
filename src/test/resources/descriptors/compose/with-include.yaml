@@ -1,0 +1,7 @@
+include:
+  - shared/infrastructure.yaml
+
+modules:
+  - ingester:
+      id: own-ingester
+      type: REACTIVE

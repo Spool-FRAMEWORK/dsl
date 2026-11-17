@@ -1,0 +1,4 @@
+modules:
+  - crawler:
+      type: POLL
+      id: broken-crawler

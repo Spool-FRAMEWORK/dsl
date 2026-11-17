@@ -2,7 +2,9 @@ package software.spool.dsl.reader;
 
 import software.spool.dsl.InvalidDescriptorException;
 
+import java.lang.reflect.RecordComponent;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -55,6 +57,27 @@ public final class DescriptorReader {
         Set<String> keys = new LinkedHashSet<>();
         values.keySet().forEach(key -> keys.add(String.valueOf(key)));
         return keys;
+    }
+
+    /**
+     * Fails on the first key that is not a component of the record the object is read into, so a misspelt key
+     * is not ignored.
+     */
+    public DescriptorReader knownKeysOnly(Class<? extends Record> type) {
+        List<String> known = Arrays.stream(type.getRecordComponents()).map(RecordComponent::getName).toList();
+        keys().stream()
+                .filter(key -> !known.contains(key))
+                .findFirst()
+                .ifPresent(key -> {
+                    throw new InvalidDescriptorException(child(key),
+                            "is not a known key. Known keys: " + String.join(", ", known));
+                });
+        return this;
+    }
+
+    /** The value of a key as it is in the descriptor, or nothing when the key is missing. */
+    public Optional<Object> value(String key) {
+        return Optional.ofNullable(values.get(key));
     }
 
     public <T> T required(String key, ValueParser<T> parser) {

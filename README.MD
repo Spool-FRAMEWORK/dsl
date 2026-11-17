@@ -18,6 +18,7 @@
   - [Crawler](#crawler)
   - [Janitor](#janitor)
   - [Ingester](#ingester)
+  - [Includes and profiles](#includes-and-profiles)
 - [Infrastructure Options](#infrastructure-options)
 - [License](#license)
 
@@ -250,6 +251,35 @@ Consumes events from the bus and writes envelopes to the data lake.
 |---|---|---|
 | **Buffered** | Set the `flush` block | Writes in batches — by size threshold or time window. |
 | **Reactive** | Omit `flush` | Writes each envelope immediately on arrival. |
+
+### Includes and profiles
+
+A descriptor can take part of its keys from other files, and can change some of them for an environment
+([ADR-016](https://linear.app/javier-castilla/document/adr-016-un-descriptor-puede-incluir-otros-ficheros-y-elegir-al-b5e8fce73f02)).
+
+```yaml
+include:
+  - shared/infrastructure.yaml      # relative to this file
+
+profiles:
+  production:
+    infrastructure:
+      eventBus:
+        type: KAFKA
+        configuration:
+          bootstrapServers: "kafka:9092"
+
+modules:
+  - ingester:
+      id: "my-ingester"
+```
+
+- Files are combined in the order of `include`, and the file that includes them goes on top. Objects are combined
+  key by key; any other value, lists included, is replaced whole.
+- A profile changes only the keys it declares. Choose it with `SpoolNodeDSL.fromDescriptor("/Spool.yaml", "production")`
+  or with the `SPOOL_PROFILE` environment variable; the argument wins. With neither, `profiles` is ignored.
+- A profile cannot declare `include` or `profiles`. An unknown profile, a missing file or an include cycle stops
+  the load, and every error names the file, and the profile, the wrong value comes from.
 
 ---
 

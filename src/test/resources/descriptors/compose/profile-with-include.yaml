@@ -1,0 +1,10 @@
+infrastructure:
+  eventBus:
+    type: IN_MEMORY
+
+modules: []
+
+profiles:
+  production:
+    include:
+      - shared/infrastructure.yaml
