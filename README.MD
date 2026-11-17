@@ -19,6 +19,7 @@
   - [Janitor](#janitor)
   - [Ingester](#ingester)
   - [Includes and profiles](#includes-and-profiles)
+  - [Variables](#variables)
 - [Infrastructure Options](#infrastructure-options)
 - [License](#license)
 
@@ -282,6 +283,43 @@ modules:
   or with the `SPOOL_PROFILE` environment variable; the argument wins. With neither, `profiles` is ignored.
 - A profile cannot declare `include` or `profiles`. An unknown profile, a missing file or an include cycle stops
   the load, and every error names the file, and the profile, the wrong value comes from.
+
+### Variables
+
+A value can use the descriptor's own variables and the environment, so it is written once and no secret lives in
+the file:
+
+```yaml
+variables:
+  root: /data/spool
+  inbox: ${root}/inbox
+
+profiles:
+  production:
+    variables:
+      root: /srv/spool
+
+infrastructure:
+  inbox:
+    type: FILE_SYSTEM
+    configuration:
+      path: ${inbox}
+  dataLake:
+    type: S3
+    configuration:
+      bucket: ${env:SPOOL_BUCKET}
+      endpoint: ${env:S3_ENDPOINT:-http://localhost:4566}
+```
+
+- `${name}` uses a variable of the `variables` block, and a variable can use others. `${env:NAME}` reads an
+  environment variable, and `${env:NAME:-default}` gives it a default.
+- A reference works as a whole value or inside a text (`${root}/inbox`). Only values are replaced, never keys.
+  `$${` writes a literal `${`.
+- Variables are replaced after the includes and the chosen profile are combined, so a profile can change a variable.
+- A variable that does not exist, an environment variable with no value and no default, or variables that use each
+  other in a circle stop the load. The error names the path of the value and the reference.
+- A value read from the environment never shows up in an error: the error shows `${env:NAME}` instead.
+- YAML anchors (`&name`, `*name`) repeat a whole block inside one file.
 
 ---
 

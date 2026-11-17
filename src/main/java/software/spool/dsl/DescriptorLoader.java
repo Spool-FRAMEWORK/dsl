@@ -1,6 +1,5 @@
 package software.spool.dsl;
 
-import software.spool.core.adapter.jackson.PayloadDeserializerFactory;
 import software.spool.dsl.compose.ComposedDescriptor;
 import software.spool.dsl.compose.DescriptorComposer;
 import software.spool.dsl.descriptors.SpoolNodeDescriptor;
@@ -8,10 +7,14 @@ import software.spool.dsl.source.ClasspathDescriptorSource;
 import software.spool.dsl.source.DescriptorSource;
 import software.spool.dsl.source.FileSystemDescriptorSource;
 import software.spool.dsl.yaml.DescriptorMapper;
+import software.spool.dsl.yaml.YamlTreeParser;
+import software.spool.dsl.variables.DescriptorVariables;
+import software.spool.dsl.variables.EnvironmentValues;
 import software.spool.dsl.yaml.raw.RawSpoolNodeDescriptor;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
@@ -29,7 +32,7 @@ public final class DescriptorLoader {
     private final UnaryOperator<String> environment;
 
     public DescriptorLoader(DescriptorSource source, UnaryOperator<String> environment) {
-        this.composer = new DescriptorComposer(source, PayloadDeserializerFactory.yaml().asMap());
+        this.composer = new DescriptorComposer(source, new YamlTreeParser());
         this.environment = environment;
     }
 
@@ -73,15 +76,26 @@ public final class DescriptorLoader {
         } catch (Exception e) {
             throw new IOException("Could not load descriptor " + location + ": " + e.getMessage(), e);
         }
+        EnvironmentValues environmentValues = new EnvironmentValues();
         try {
-            return build.apply(DescriptorMapper.map(RawSpoolNodeDescriptor.from(composed.tree())));
+            Map<String, Object> tree = new DescriptorVariables(environment, environmentValues).resolve(composed.tree());
+            return build.apply(DescriptorMapper.map(RawSpoolNodeDescriptor.from(tree)));
         } catch (InvalidDescriptorException e) {
             InvalidDescriptorException located =
                     e.from(composed.origins().originOf(e.path()).describe(location));
-            throw new IOException("Invalid descriptor " + location + ": " + located.getMessage(), located);
+            throw failure("Invalid descriptor " + location + ": " + located.getMessage(), located, environmentValues);
         } catch (Exception e) {
-            throw new IOException("Could not load descriptor " + location + ": " + e.getMessage(), e);
+            throw failure("Could not load descriptor " + location + ": " + e.getMessage(), e, environmentValues);
         }
+    }
+
+    /**
+     * The error to throw, with no value read from the environment in it. When the message held one, the cause is
+     * left out, because its own message and stack trace would show the value again.
+     */
+    private static IOException failure(String message, Exception cause, EnvironmentValues environmentValues) {
+        String masked = environmentValues.mask(message);
+        return masked.equals(message) ? new IOException(message, cause) : new IOException(masked);
     }
 
     public Optional<String> profileOfTheEnvironment() {
