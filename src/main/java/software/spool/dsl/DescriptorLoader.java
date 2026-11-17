@@ -6,6 +6,7 @@ import software.spool.dsl.compose.DescriptorComposer;
 import software.spool.dsl.descriptors.SpoolNodeDescriptor;
 import software.spool.dsl.source.ClasspathDescriptorSource;
 import software.spool.dsl.source.DescriptorSource;
+import software.spool.dsl.source.FileSystemDescriptorSource;
 import software.spool.dsl.yaml.DescriptorMapper;
 import software.spool.dsl.yaml.raw.RawSpoolNodeDescriptor;
 
@@ -38,6 +39,14 @@ public final class DescriptorLoader {
 
     public static DescriptorLoader fromClasspath(UnaryOperator<String> environment) {
         return new DescriptorLoader(new ClasspathDescriptorSource(), environment);
+    }
+
+    public static DescriptorLoader fromFileSystem() {
+        return fromFileSystem(System::getenv);
+    }
+
+    public static DescriptorLoader fromFileSystem(UnaryOperator<String> environment) {
+        return new DescriptorLoader(new FileSystemDescriptorSource(), environment);
     }
 
     public SpoolNodeDescriptor load(String location) throws IOException {

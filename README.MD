@@ -274,6 +274,8 @@ modules:
       id: "my-ingester"
 ```
 
+- `SpoolNodeDSL.fromDescriptor(String)` reads the descriptor from the classpath and `SpoolNodeDSL.fromDescriptor(Path)`
+  from the file system. Included files are read from the same place, next to the file that names them.
 - Files are combined in the order of `include`, and the file that includes them goes on top. Objects are combined
   key by key; any other value, lists included, is replaced whole.
 - A profile changes only the keys it declares. Choose it with `SpoolNodeDSL.fromDescriptor("/Spool.yaml", "production")`
