@@ -23,12 +23,13 @@ modules:
   - crawler:
       type: POLL
       id: synthea-crawler
+      schedule:
+        every: 5s
       source:
         type: HTTP
         configuration:
           sourceId: synthea-api
           url: "http://plytrox.com:8000/events?limit=5"
-          scheduleMilliseconds: 5000
         mediaType: JSON_ARRAY
         rootPath: events
       eventMapping:
@@ -40,8 +41,9 @@ modules:
 
   - janitor:
       id: synthea-janitor
+      schedule:
+        every: 1s
       configuration:
-        milliseconds: 1000
-        millisecondsThreshold: 10000
-        millisecondsTTL: 100000
-        millisecondsQuarantineRetention: 2592000000
+        threshold: 10s
+        ttl: 100s
+        quarantineRetention: 30d

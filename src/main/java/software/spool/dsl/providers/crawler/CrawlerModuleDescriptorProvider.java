@@ -2,6 +2,7 @@ package software.spool.dsl.providers.crawler;
 
 import software.spool.core.port.serde.EnrichmentRule;
 import software.spool.core.port.serde.NamingConvention;
+import software.spool.dsl.descriptors.module.ScheduleDescriptor;
 import software.spool.dsl.descriptors.module.SpoolModuleDescriptor;
 import software.spool.dsl.descriptors.module.crawler.CrawlerDescriptor;
 import software.spool.dsl.descriptors.module.crawler.ErrorRouterDescriptor;
@@ -17,6 +18,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+
+import static software.spool.dsl.reader.ReadableDuration.insteadOfMilliseconds;
 
 @SpoolPlugin(ModuleDescriptorProvider.class)
 public class CrawlerModuleDescriptorProvider implements ModuleDescriptorProvider {
@@ -47,7 +50,8 @@ public class CrawlerModuleDescriptorProvider implements ModuleDescriptorProvider
                 crawler.string("id"),
                 readSource(crawler.object("source")),
                 readEventMapping(crawler.object("eventMapping")),
-                readErrorRouter(crawler)
+                readErrorRouter(crawler),
+                ScheduleDescriptor.of(crawler)
         );
     }
 
@@ -58,7 +62,7 @@ public class CrawlerModuleDescriptorProvider implements ModuleDescriptorProvider
     }
 
     private static SourceDescriptor readSource(DescriptorReader source) {
-        source.objectOrEmpty("configuration").optional("scheduleMilliseconds", ValueParsers.INTEGER);
+        source.objectOrEmpty("configuration").replaced("scheduleMilliseconds", insteadOfMilliseconds("schedule.every"));
         return new SourceDescriptor(
                 source.string("type"),
                 source.optional("id", ValueParsers.STRING).orElse(null),

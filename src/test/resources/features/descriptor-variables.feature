@@ -170,7 +170,7 @@ Feature: Variables in the descriptor
         - janitor:
             id: j1
             configuration:
-              millisecondsTTL: ${env:TTL}
+              ttl: ${env:TTL}
       """
     When the descriptor is loaded
     Then the load fails

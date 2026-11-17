@@ -7,6 +7,8 @@ import software.spool.dsl.reader.DescriptorReader;
 import software.spool.dsl.reader.ValueParsers;
 import software.spool.infrastructure.spi.SpoolPlugin;
 
+import static software.spool.dsl.reader.ReadableDuration.insteadOfMilliseconds;
+
 @SpoolPlugin(ModuleDescriptorProvider.class)
 public class IngesterModuleDescriptorProvider implements ModuleDescriptorProvider {
 
@@ -17,14 +19,13 @@ public class IngesterModuleDescriptorProvider implements ModuleDescriptorProvide
 
     @Override
     public SpoolModuleDescriptor read(DescriptorReader ingester) {
-        String id = ingester.string("id");
-        DescriptorReader configuration = ingester.objectOrEmpty("configuration");
-        configuration.optional("size", ValueParsers.INTEGER);
-        configuration.optional("milliseconds", ValueParsers.LONG);
+        DescriptorReader configuration = ingester.objectOrEmpty("configuration")
+                .replaced("milliseconds", insteadOfMilliseconds("every"));
         return new IngesterDescriptor(
                 ingester.optional("type", ValueParsers.STRING).orElse(null),
-                id,
-                ingester.stringMap("configuration")
+                ingester.string("id"),
+                configuration.optional("size", ValueParsers.INTEGER),
+                configuration.optional("every", ValueParsers.DURATION)
         );
     }
 }

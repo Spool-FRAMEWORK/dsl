@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 
 /**
  * A typed view of one object in a descriptor that knows where it is. Every error it raises names the
@@ -72,6 +73,14 @@ public final class DescriptorReader {
                     throw new InvalidDescriptorException(child(key),
                             "is not a known key. Known keys: " + String.join(", ", known));
                 });
+        return this;
+    }
+
+    /** Fails when a key that was replaced is still there. {@code instead} says what to write, from its value. */
+    public DescriptorReader replaced(String key, Function<Object, String> instead) {
+        value(key).ifPresent(raw -> {
+            throw new InvalidDescriptorException(child(key), "is no longer supported: " + instead.apply(raw));
+        });
         return this;
     }
 

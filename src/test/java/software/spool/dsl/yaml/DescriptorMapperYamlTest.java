@@ -9,10 +9,12 @@ import software.spool.dsl.InvalidDescriptorException;
 import software.spool.dsl.descriptors.SpoolNodeDescriptor;
 import software.spool.dsl.descriptors.module.crawler.CrawlerDescriptor;
 import software.spool.dsl.descriptors.module.ingester.IngesterDescriptor;
+import software.spool.dsl.descriptors.module.ScheduleDescriptor;
 import software.spool.dsl.descriptors.module.janitor.JanitorDescriptor;
 import software.spool.dsl.yaml.raw.RawSpoolNodeDescriptor;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.nio.charset.StandardCharsets;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -40,9 +42,8 @@ class DescriptorMapperYamlTest {
         assertThat(crawler.source().type()).isEqualTo("HTTP");
         assertThat(crawler.source().mediaType()).isEqualTo("JSON_ARRAY");
         assertThat(crawler.source().rootPath()).isEqualTo("events");
-        assertThat(crawler.source().configuration())
-                .containsEntry("sourceId", "synthea-api")
-                .containsEntry("scheduleMilliseconds", "5000");
+        assertThat(crawler.source().configuration()).containsEntry("sourceId", "synthea-api");
+        assertThat(crawler.schedule()).contains(new ScheduleDescriptor(Duration.ofSeconds(5)));
         assertThat(crawler.eventMapping().namingConvention()).isEqualTo(NamingConvention.SNAKE_CASE);
         assertThat(crawler.eventMapping().domainMappingList()).isEmpty();
         assertThat(crawler.eventMapping().attributeList()).isEmpty();
@@ -53,10 +54,10 @@ class DescriptorMapperYamlTest {
 
         JanitorDescriptor janitor = (JanitorDescriptor) node.modules().get(2);
         assertThat(janitor.id()).isEqualTo("synthea-janitor");
-        assertThat(janitor.configuration())
-                .containsEntry("milliseconds", "1000")
-                .containsEntry("millisecondsThreshold", "10000")
-                .containsEntry("millisecondsTTL", "100000");
+        assertThat(janitor.schedule()).contains(new ScheduleDescriptor(Duration.ofSeconds(1)));
+        assertThat(janitor.threshold()).contains(Duration.ofSeconds(10));
+        assertThat(janitor.ttl()).contains(Duration.ofSeconds(100));
+        assertThat(janitor.quarantineRetention()).contains(Duration.ofDays(30));
     }
 
     @Test
@@ -144,20 +145,19 @@ class DescriptorMapperYamlTest {
                   - janitor:
                       id: j1
                       configuration:
-                        millisecondsTTL: 86400000
-                        millisecondsQuarantineTTL: 604800000
+                        ttl: 1d
+                        quarantineTtl: 7d
                 """;
 
         JanitorDescriptor janitor = (JanitorDescriptor) DescriptorMapper.map(read(yaml.getBytes(StandardCharsets.UTF_8)))
                 .modules().get(0);
 
-        assertThat(janitor.configuration())
-                .containsEntry("millisecondsTTL", "86400000")
-                .containsEntry("millisecondsQuarantineTTL", "604800000");
+        assertThat(janitor.ttl()).contains(Duration.ofDays(1));
+        assertThat(janitor.quarantineTtl()).contains(Duration.ofDays(7));
     }
 
     @Test
-    void map_janitorWithAQuarantineTtlThatIsNotAnInteger_namesTheKey() {
+    void map_janitorWithAQuarantineTtlThatIsNotADuration_namesTheKey() {
         String yaml = """
                 infrastructure:
                   eventBus: {type: IN_MEMORY}
@@ -166,12 +166,12 @@ class DescriptorMapperYamlTest {
                   - janitor:
                       id: j1
                       configuration:
-                        millisecondsQuarantineTTL: soon
+                        quarantineTtl: soon
                 """;
 
         assertThatThrownBy(() -> DescriptorMapper.map(read(yaml.getBytes(StandardCharsets.UTF_8))))
                 .isInstanceOf(InvalidDescriptorException.class)
-                .hasMessageContaining("millisecondsQuarantineTTL must be an integer, got 'soon'");
+                .hasMessageContaining("quarantineTtl must be a duration such as 30d or P30D, got 'soon'");
     }
 
     @Test
@@ -190,7 +190,7 @@ class DescriptorMapperYamlTest {
         JanitorDescriptor janitor = (JanitorDescriptor) DescriptorMapper.map(read(yaml.getBytes(StandardCharsets.UTF_8)))
                 .modules().get(0);
 
-        assertThat(janitor.configuration()).containsEntry("maxInboxUpdateAttempts", "5");
+        assertThat(janitor.maxInboxUpdateAttempts()).contains(5);
     }
 
     @Test
@@ -225,7 +225,7 @@ class DescriptorMapperYamlTest {
         JanitorDescriptor janitor = (JanitorDescriptor) DescriptorMapper.map(read(yaml.getBytes(StandardCharsets.UTF_8)))
                 .modules().get(0);
 
-        assertThat(janitor.configuration()).doesNotContainKey("millisecondsQuarantineTTL");
+        assertThat(janitor.quarantineTtl()).isEmpty();
     }
 
     private static RawSpoolNodeDescriptor read(byte[] yaml) {

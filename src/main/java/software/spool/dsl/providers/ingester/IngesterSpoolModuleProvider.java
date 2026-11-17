@@ -11,10 +11,10 @@ import software.spool.ingester.internal.utils.FlushPolicy;
 import software.spool.infrastructure.spi.SpoolPlugin;
 import software.spool.infrastructure.spi.provider.PluginConfiguration;
 
-import java.time.Duration;
-
 @SpoolPlugin(SpoolModuleProvider.class)
 public class IngesterSpoolModuleProvider implements SpoolModuleProvider {
+    private static final int DEFAULT_BATCH_SIZE = 100;
+
     @Override
     public String name() {
         return "INGESTER";
@@ -56,13 +56,7 @@ public class IngesterSpoolModuleProvider implements SpoolModuleProvider {
     }
 
     private FlushPolicy buildFlushPolicy(IngesterDescriptor ingester) {
-        String size = ingester.configuration().get("size");
-        String millis = ingester.configuration().get("milliseconds");
-        FlushPolicy policy = size != null
-                ? FlushPolicy.whenReaches(Integer.parseInt(size))
-                : FlushPolicy.whenReaches(100);
-        return millis != null
-                ? policy.orEvery(Duration.ofMillis(Long.parseLong(millis)))
-                : policy;
+        FlushPolicy policy = FlushPolicy.whenReaches(ingester.size().orElse(DEFAULT_BATCH_SIZE));
+        return ingester.every().map(policy::orEvery).orElse(policy);
     }
 }

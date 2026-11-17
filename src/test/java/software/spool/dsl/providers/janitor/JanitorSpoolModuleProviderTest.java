@@ -15,15 +15,20 @@ import software.spool.infrastructure.adapter.quarantine.FileSystemQuarantineRepo
 import software.spool.janitor.api.Janitor;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureComponentDescriptor;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
+import software.spool.dsl.InvalidDescriptorException;
+import software.spool.dsl.descriptors.module.ScheduleDescriptor;
 import software.spool.dsl.descriptors.module.janitor.JanitorDescriptor;
 import software.spool.infrastructure.spi.provider.PluginConfiguration;
 
 import java.nio.file.Path;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class JanitorSpoolModuleProviderTest {
 
@@ -37,65 +42,27 @@ class JanitorSpoolModuleProviderTest {
         new InfrastructureComponentDescriptor("FILE_SYSTEM", Map.of("path", "target/spool-test/quarantine")));
 
     @Test
-    void buildQuarantineTtl_withTheKey_returnsItAsAnInteger() {
-        JanitorDescriptor janitor = new JanitorDescriptor("j1", Map.of("millisecondsQuarantineTTL", "604800000"));
-
-        assertThat(provider.buildQuarantineTtl(janitor)).isEqualTo(604_800_000);
-    }
-
-    @Test
-    void buildMaxInboxUpdateAttempts_withTheKey_returnsItAsAnInteger() {
-        JanitorDescriptor janitor = new JanitorDescriptor("j1", Map.of("maxInboxUpdateAttempts", "5"));
-
-        assertThat(provider.buildMaxInboxUpdateAttempts(janitor)).isEqualTo(5);
-    }
-
-    @Test
-    void buildMaxInboxUpdateAttempts_withoutTheKey_isNullSoTheBuilderDefaultApplies() {
-        assertThat(provider.buildMaxInboxUpdateAttempts(new JanitorDescriptor("j1", Map.of()))).isNull();
-    }
-
-    @Test
-    void buildQuarantineTtl_withoutTheKey_isNullSoNothingIsDeleted() {
-        assertThat(provider.buildQuarantineTtl(new JanitorDescriptor("j1", Map.of()))).isNull();
-    }
-
-    @Test
-    void buildQuarantineTtl_isIndependentOfTheOtherTtl() {
-        JanitorDescriptor janitor = new JanitorDescriptor("j1", Map.of("millisecondsTTL", "86400000"));
-
-        assertThat(provider.buildQuarantineTtl(janitor)).isNull();
-    }
-
-    @Test
-    void create_withAQuarantineTtl_buildsTheModule() {
-        JanitorDescriptor janitor = new JanitorDescriptor("j1", Map.of("millisecondsQuarantineTTL", "604800000"));
+    void create_withEveryTime_buildsTheModule() {
+        JanitorDescriptor janitor = new JanitorDescriptor("j1", Optional.of(new ScheduleDescriptor(Duration.ofSeconds(1))),
+            Optional.of(Duration.ofSeconds(10)), Optional.of(Duration.ofDays(1)), Optional.of(Duration.ofDays(7)),
+            Optional.of(Duration.ofDays(90)), Optional.of(5));
 
         assertThat(provider.create(configurationOf(janitor))).isNotNull();
     }
 
     @Test
-    void create_withoutAQuarantineTtl_buildsTheModule() {
-        assertThat(provider.create(configurationOf(new JanitorDescriptor("j1", Map.of())))).isNotNull();
+    void create_withDefaults_buildsTheModule() {
+        assertThat(provider.create(configurationOf(JanitorDescriptor.withDefaults("j1")))).isNotNull();
     }
 
     @Test
-    void buildQuarantineRetention_withTheKey_returnsItAsALongBeyondTheIntegerRange() {
-        JanitorDescriptor janitor = new JanitorDescriptor("j1", Map.of("millisecondsQuarantineRetention", "7776000000"));
+    void create_withATtlLongerThanTheJanitorAccepts_namesTheKey() {
+        JanitorDescriptor janitor = new JanitorDescriptor("j1", Optional.empty(), Optional.empty(),
+            Optional.of(Duration.ofDays(30)), Optional.empty(), Optional.empty(), Optional.empty());
 
-        assertThat(provider.buildQuarantineRetention(janitor)).isEqualTo(7_776_000_000L);
-    }
-
-    @Test
-    void buildQuarantineRetention_withoutTheKey_isNullSoResolvedRecordsAreKept() {
-        assertThat(provider.buildQuarantineRetention(new JanitorDescriptor("j1", Map.of()))).isNull();
-    }
-
-    @Test
-    void create_withAQuarantineRetention_buildsTheModule() {
-        JanitorDescriptor janitor = new JanitorDescriptor("j1", Map.of("millisecondsQuarantineRetention", "7776000000"));
-
-        assertThat(provider.create(configurationOf(janitor))).isNotNull();
+        assertThatThrownBy(() -> provider.create(configurationOf(janitor)))
+            .isInstanceOf(InvalidDescriptorException.class)
+            .hasMessageStartingWith("configuration.ttl must be at most ");
     }
 
     @Test
@@ -114,7 +81,7 @@ class JanitorSpoolModuleProviderTest {
             QuarantineReason.VALIDATION_FAILED, List.of(), Instant.now()));
 
         Janitor janitor = (Janitor) provider.create(PluginConfiguration.builder()
-            .with("descriptor", new JanitorDescriptor("j1", Map.of()))
+            .with("descriptor", JanitorDescriptor.withDefaults("j1"))
             .with("infrastructure", infrastructure)
             .build());
 

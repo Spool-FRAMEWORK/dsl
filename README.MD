@@ -104,19 +104,19 @@ modules:
           http:
             url: "https://api.example.com/data"
       schedule:
-        everyMilliseconds: 60000
+        every: 1m
 
   - janitor:
       id: "my-janitor"
-      workers: 2
-      everyMilliseconds: 5000
+      schedule:
+        every: 5s
 
   - ingester:
       id: "my-ingester"
-      flush:
+      type: FLUSH
+      configuration:
         size: 100
-        every: 10
-        unit: "SECONDS"
+        every: 10s
 ```
 
 ### 2. Boot the pipeline
@@ -173,7 +173,7 @@ Polls a source on a schedule and stores each record in the inbox.
         http:
           url: "https://api.example.com/data"
     schedule:
-      everyMilliseconds: 60000
+      every: 1m             # without a schedule, the crawler polls once
     eventMapping:
       namingConvention: SNAKE_CASE
       attributeList:
@@ -191,14 +191,26 @@ Runs on a schedule to keep the inbox healthy — republishes stuck envelopes, qu
 ```yaml
 - janitor:
     id: "my-janitor"
-    workers: 2
-    everyMilliseconds: 5000
+    schedule:
+      every: 5s             # 5s by default
+    configuration:
+      threshold: 10s
+      ttl: 1d
 ```
 
-| Field | Description |
+| Key | Description |
 |---|---|
-| `workers` | Number of concurrent polling workers. |
-| `everyMilliseconds` | Polling interval in ms. |
+| `schedule.every` | How often the janitor runs a round. |
+| `configuration.threshold` | How long an envelope can stay without moving before it is republished. |
+| `configuration.ttl` | How long an envelope stays in the inbox before it expires. |
+| `configuration.maxInboxUpdateAttempts` | Rounds an event is tried when the inbox fails to apply it. |
+
+### Durations
+
+Every time in the descriptor is a duration, in ISO 8601 (`PT5S`, `P30D`) or in the short form: `100ms`, `5s`, `10m`,
+`2h`, `30d`. A bare number is not accepted, because it would not say its unit. The keys that held milliseconds
+(`millisecondsTTL`, `scheduleMilliseconds`...) are no longer read: loading fails and names the key that replaces
+them ([ADR-011](https://linear.app/javier-castilla/document/adr-011-el-descriptor-admite-variables-propias-y-de-entorno-y-b7e8390d83c6)).
 
 ---
 
@@ -226,8 +238,8 @@ Two settings in the janitor configuration:
 
 | Key | Effect |
 |---|---|
-| `millisecondsQuarantineTTL` | Removes from the inbox what has been in `QUARANTINED` for longer. Its record stays pending. |
-| `millisecondsQuarantineRetention` | Deletes the records resolved longer ago. Pending records are never deleted. Without it, resolved records are kept. |
+| `quarantineTtl` | Removes from the inbox what has been in `QUARANTINED` for longer. Its record stays pending. |
+| `quarantineRetention` | Deletes the records resolved longer ago. Pending records are never deleted. Without it, resolved records are kept. |
 
 A record the mounter rejected stays in bronze no longer: the mounter removes it from its bronze partition after keeping the record. Resolving it writes the envelope back to that partition (or the corrected one, under its new key) and publishes `EnvelopePersisted` so it is mounted again; the inbox is not touched. The janitor writes to the `infrastructure.dataLake`; without one, those records are skipped.
 
@@ -242,16 +254,16 @@ Consumes events from the bus and writes envelopes to the data lake.
 ```yaml
 - ingester:
     id: "my-ingester"
-    flush:
-      size: 100
-      every: 10
-      unit: "SECONDS"
+    type: FLUSH
+    configuration:
+      size: 100             # 100 by default
+      every: 10s
 ```
 
-| Mode | How to activate | Behaviour |
-|---|---|---|
-| **Buffered** | Set the `flush` block | Writes in batches — by size threshold or time window. |
-| **Reactive** | Omit `flush` | Writes each envelope immediately on arrival. |
+| Type | Behaviour |
+|---|---|
+| `FLUSH` | Writes in batches: when `size` envelopes arrive or, if set, `every` that long. |
+| `REACTIVE` | Writes each envelope immediately on arrival. |
 
 ### Includes and profiles
 

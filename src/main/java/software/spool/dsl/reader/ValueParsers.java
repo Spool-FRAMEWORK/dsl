@@ -1,5 +1,6 @@
 package software.spool.dsl.reader;
 
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.function.Function;
@@ -18,6 +19,8 @@ public final class ValueParsers {
             whole(raw).filter(v -> v >= Integer.MIN_VALUE && v <= Integer.MAX_VALUE).map(Long::intValue));
 
     public static final ValueParser<Long> LONG = of("an integer", ValueParsers::whole);
+
+    public static final ValueParser<Duration> DURATION = of("a duration such as 30d or P30D", ReadableDuration::parse);
 
     private ValueParsers() {}
 

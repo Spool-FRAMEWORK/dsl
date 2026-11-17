@@ -64,7 +64,7 @@ class SpoolNodeDSLTest {
         InfrastructureComponentDescriptor bus = new InfrastructureComponentDescriptor("IN_MEMORY", Map.of());
         InfrastructureDescriptor infra = new InfrastructureDescriptor(null, bus, bus, null);
         SpoolNodeDescriptor descriptor = new SpoolNodeDescriptor(infra,
-            List.of(new IngesterDescriptor("REACTIVE", "synthea-ingester", Map.of())));
+            List.of(IngesterDescriptor.withDefaults("REACTIVE", "synthea-ingester")));
 
         assertThatThrownBy(() -> SpoolNodeDSL.fromDescriptor(descriptor))
             .isInstanceOf(InvalidDescriptorException.class)
@@ -80,7 +80,7 @@ class SpoolNodeDSLTest {
             Map.of("path", "target/spool-test/datalake"));
         InfrastructureDescriptor infra = new InfrastructureDescriptor(null, bus, inbox, lake);
         SpoolNodeDescriptor descriptor = new SpoolNodeDescriptor(infra,
-            List.of(new IngesterDescriptor("REACTIVE", "synthea-ingester", Map.of())));
+            List.of(IngesterDescriptor.withDefaults("REACTIVE", "synthea-ingester")));
 
         SpoolNode node = SpoolNodeDSL.fromDescriptor(descriptor);
 
@@ -94,7 +94,7 @@ class SpoolNodeDSLTest {
             Map.of("path", "target/spool-test/inbox"));
         InfrastructureDescriptor infra = new InfrastructureDescriptor(null, bus, inbox, null);
         SpoolNodeDescriptor descriptor = new SpoolNodeDescriptor(infra,
-            List.of(new JanitorDescriptor("synthea-janitor", Map.of())));
+            List.of(JanitorDescriptor.withDefaults("synthea-janitor")));
 
         assertThatThrownBy(() -> SpoolNodeDSL.fromDescriptor(descriptor))
             .isInstanceOf(InvalidDescriptorException.class)
@@ -108,7 +108,7 @@ class SpoolNodeDSLTest {
             "region", "auto", "bucket", "spool", "endpoint", "http://localhost:9000", "accessKeyEnv", "R2_ACCESS_KEY"));
         InfrastructureDescriptor infra = new InfrastructureDescriptor(null, bus, bus, lake);
         SpoolNodeDescriptor descriptor = new SpoolNodeDescriptor(infra,
-            List.of(new IngesterDescriptor("REACTIVE", "synthea-ingester", Map.of())));
+            List.of(IngesterDescriptor.withDefaults("REACTIVE", "synthea-ingester")));
 
         assertThatThrownBy(() -> SpoolNodeDSL.fromDescriptor(descriptor))
             .isInstanceOf(IllegalArgumentException.class)

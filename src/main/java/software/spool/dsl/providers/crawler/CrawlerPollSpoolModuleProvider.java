@@ -18,7 +18,6 @@ import software.spool.infrastructure.spi.SpoolPlugin;
 import software.spool.infrastructure.spi.provider.PluginConfiguration;
 import software.spool.infrastructure.spi.provider.PollSourceProvider;
 
-import java.time.Duration;
 import java.util.List;
 
 @SpoolPlugin(SpoolModuleProvider.class)
@@ -49,7 +48,7 @@ public class CrawlerPollSpoolModuleProvider implements SpoolModuleProvider {
                 : CrawlerBuilderFactory.poll(pollSource);
         return builder
                 .source()
-                    .schedule(buildSchedule(source))
+                    .schedule(scheduleOf(crawler))
                     .ports(InfrastructurePluginFactory.crawlerPorts(infrastructure))
                     .enrichRules(source.enrichment())
                     .rootPath(source.rootPath())
@@ -87,9 +86,9 @@ public class CrawlerPollSpoolModuleProvider implements SpoolModuleProvider {
         return (Normalizer<I>) InfrastructurePluginFactory.normalizer(source);
     }
 
-    private PollingConfiguration buildSchedule(SourceDescriptor source) {
-        String every = source.configuration().get("scheduleMilliseconds");
-        if (every == null || Integer.parseInt(every) == 0) return PollingConfiguration.once();
-        return PollingConfiguration.every(Duration.ofMillis(Integer.parseInt(every)));
+    private static PollingConfiguration scheduleOf(CrawlerDescriptor crawler) {
+        return crawler.schedule()
+                .map(schedule -> PollingConfiguration.every(schedule.every()))
+                .orElseGet(PollingConfiguration::once);
     }
 }

@@ -1,7 +1,9 @@
 package software.spool.dsl.providers.janitor;
 
 import software.spool.core.model.spool.SpoolModule;
+import software.spool.dsl.InvalidDescriptorException;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
+import software.spool.dsl.descriptors.module.ScheduleDescriptor;
 import software.spool.dsl.descriptors.module.SpoolModuleDescriptor;
 import software.spool.dsl.descriptors.module.janitor.JanitorDescriptor;
 import software.spool.dsl.providers.InfrastructurePluginFactory;
@@ -15,6 +17,8 @@ import java.time.Duration;
 
 @SpoolPlugin(SpoolModuleProvider.class)
 public class JanitorSpoolModuleProvider implements SpoolModuleProvider {
+    private static final Duration DEFAULT_ROUND_INTERVAL = Duration.ofSeconds(5);
+    private static final Duration LONGEST_INT_MILLIS = Duration.ofMillis(Integer.MAX_VALUE);
 
     @Override
     public String name() {
@@ -46,45 +50,24 @@ public class JanitorSpoolModuleProvider implements SpoolModuleProvider {
                 .on(InfrastructurePluginFactory.tracedEventPublisher(infrastructure))
                 .subscribeWith(bus)
                 .quarantineIn(InfrastructurePluginFactory.quarantineRepository(infrastructure))
-                .every(buildInterval(janitor))
-                .withMillisecondsThreshold(buildWorkers(janitor))
-                .withMillisecondsTtl(buildTtl(janitor))
-                .withMillisecondsQuarantineTtl(buildQuarantineTtl(janitor))
-                .withMillisecondsQuarantineRetention(buildQuarantineRetention(janitor))
-                .withMaxInboxUpdateAttempts(buildMaxInboxUpdateAttempts(janitor));
+                .every(janitor.schedule().map(ScheduleDescriptor::every).orElse(DEFAULT_ROUND_INTERVAL));
+        janitor.threshold().ifPresent(threshold -> builder.withMillisecondsThreshold(intMillis("threshold", threshold)));
+        janitor.ttl().ifPresent(ttl -> builder.withMillisecondsTtl(intMillis("ttl", ttl)));
+        janitor.quarantineTtl().ifPresent(ttl -> builder.withMillisecondsQuarantineTtl(intMillis("quarantineTtl", ttl)));
+        janitor.quarantineRetention().ifPresent(retention -> builder.withMillisecondsQuarantineRetention(retention.toMillis()));
+        janitor.maxInboxUpdateAttempts().ifPresent(builder::withMaxInboxUpdateAttempts);
         if (infrastructure.dataLake() != null) {
             builder.rewriteBronzeIn(InfrastructurePluginFactory.bronzeRepository(infrastructure));
         }
         return builder.create();
     }
 
-    private Duration buildInterval(JanitorDescriptor janitor) {
-        String millis = janitor.configuration().get("milliseconds");
-        return Duration.ofMillis(millis != null ? Long.parseLong(millis) : 5000L);
-    }
-
-    private Integer buildWorkers(JanitorDescriptor janitor) {
-        String threshold = janitor.configuration().get("millisecondsThreshold");
-        return threshold != null ? Integer.parseInt(threshold) : null;
-    }
-
-    private Integer buildTtl(JanitorDescriptor janitor) {
-        String ttl = janitor.configuration().get("millisecondsTTL");
-        return ttl != null ? Integer.parseInt(ttl) : null;
-    }
-
-    Integer buildQuarantineTtl(JanitorDescriptor janitor) {
-        String ttl = janitor.configuration().get("millisecondsQuarantineTTL");
-        return ttl != null ? Integer.parseInt(ttl) : null;
-    }
-
-    Integer buildMaxInboxUpdateAttempts(JanitorDescriptor janitor) {
-        String attempts = janitor.configuration().get("maxInboxUpdateAttempts");
-        return attempts != null ? Integer.parseInt(attempts) : null;
-    }
-
-    Long buildQuarantineRetention(JanitorDescriptor janitor) {
-        String retention = janitor.configuration().get("millisecondsQuarantineRetention");
-        return retention != null ? Long.parseLong(retention) : null;
+    /** The janitor takes some times as an int of milliseconds; a longer one fails instead of wrapping around. */
+    private static int intMillis(String key, Duration duration) {
+        if (duration.compareTo(LONGEST_INT_MILLIS) > 0) {
+            throw new InvalidDescriptorException("configuration." + key,
+                    "must be at most " + LONGEST_INT_MILLIS + ", got " + duration);
+        }
+        return (int) duration.toMillis();
     }
 }

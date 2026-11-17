@@ -102,22 +102,22 @@ class DescriptorMapperTest {
     }
 
     @Test
-    void map_janitorWithANonNumericInterval_namesTheKeyAndTheValue() {
+    void map_janitorWithAnIntervalThatIsNotADuration_namesTheKeyAndTheValue() {
         RawSpoolNodeDescriptor raw = new RawSpoolNodeDescriptor(anyInfra(), List.of(Map.of("janitor",
-            Map.of("id", "j", "configuration", Map.of("milliseconds", "abc")))));
+            Map.of("id", "j", "schedule", Map.of("every", "abc")))));
 
         assertThatThrownBy(() -> DescriptorMapper.map(raw))
-            .hasMessage("modules[0].janitor.configuration.milliseconds must be an integer, got 'abc'");
+            .hasMessage("modules[0].janitor.schedule.every must be a duration such as 30d or P30D, got 'abc'");
     }
 
     @Test
-    void map_crawlerWithANonNumericSchedule_namesTheKeyAndTheValue() {
+    void map_crawlerWithAScheduleThatIsNotADuration_namesTheKeyAndTheValue() {
         Map<String, Object> crawler = crawler(Map.of("namingConvention", "SNAKE_CASE"));
-        ((Map<String, Object>) crawler.get("source")).put("configuration", Map.of("scheduleMilliseconds", "soon"));
+        crawler.put("schedule", Map.of("every", "soon"));
         RawSpoolNodeDescriptor raw = new RawSpoolNodeDescriptor(anyInfra(), List.of(Map.of("crawler", crawler)));
 
         assertThatThrownBy(() -> DescriptorMapper.map(raw))
-            .hasMessage("modules[0].crawler.source.configuration.scheduleMilliseconds must be an integer, got 'soon'");
+            .hasMessage("modules[0].crawler.schedule.every must be a duration such as 30d or P30D, got 'soon'");
     }
 
     @Test

@@ -18,6 +18,7 @@ import software.spool.infrastructure.spi.provider.PluginConfiguration;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -83,6 +84,6 @@ class CrawlerErrorRouterTest {
         InfrastructureComponentDescriptor bus = new InfrastructureComponentDescriptor("IN_MEMORY", Map.of());
         InfrastructureComponentDescriptor inbox = new InfrastructureComponentDescriptor("FILE_SYSTEM", Map.of("path", tmp.toString()));
         InfrastructureDescriptor infra = new InfrastructureDescriptor(null, bus, inbox, null);
-        return new SpoolNodeDescriptor(infra, List.of(new CrawlerDescriptor(crawlerType, "c", source, mapping, errorRouter)));
+        return new SpoolNodeDescriptor(infra, List.of(new CrawlerDescriptor(crawlerType, "c", source, mapping, errorRouter, Optional.empty())));
     }
 }
