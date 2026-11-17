@@ -6,6 +6,8 @@
 
 **DSL** is the **Spool** framework module that lets you **declare your entire pipeline in a single `Spool.yaml` file** and boot it with one line of Java. No wiring code, no boilerplate.
 
+Every YAML example in this README is loaded by `ReadmeExamplesTest`, so it is the real format of the descriptor.
+
 ---
 
 ## Table of Contents
@@ -17,7 +19,10 @@
   - [Infrastructure](#infrastructure)
   - [Crawler](#crawler)
   - [Janitor](#janitor)
+  - [Durations](#durations)
+  - [Quarantine](#quarantine)
   - [Ingester](#ingester)
+  - [Authentication](#authentication)
   - [Includes and profiles](#includes-and-profiles)
   - [Variables](#variables)
 - [Infrastructure Options](#infrastructure-options)
@@ -33,7 +38,7 @@ Spool.yaml
 ▼
 SpoolNodeDSL.fromDescriptor(path)  →  SpoolNode
 │
-├── InfrastructureDescriptor  →  eventBus · inbox · dataLake · watchdog
+├── InfrastructureDescriptor  →  eventBus · inbox · dataLake · quarantineRepository · watchdog
 │
 └── SpoolModuleDescriptor[]
     ├── CrawlerDescriptor   →  CrawlerBuilderFactory  →  Crawler
@@ -41,7 +46,9 @@ SpoolNodeDSL.fromDescriptor(path)  →  SpoolNode
     └── IngesterDescriptor  →  IngesterBuilderFactory →  Ingester
 ```
 
-Each builder resolves its infrastructure adapters through `PluginRegistry` using the Java SPI system (`spool-infrastructure`). No implementation detail leaks into your descriptor.
+Each component names its adapter with `type`, and the adapter is found among the plugins registered through the Java
+SPI (`spool-infrastructure`). The whole descriptor is checked before any module starts: a wrong key or value stops
+the node and the error says its path.
 
 ---
 
@@ -51,9 +58,12 @@ Each builder resolves its infrastructure adapters through `PluginRegistry` using
 <dependency>
     <groupId>io.github.spool-framework</groupId>
     <artifactId>dsl</artifactId>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>${spool.version}</version>
 </dependency>
 ```
+
+Releases are on [Maven Central](https://central.sonatype.com/artifact/io.github.spool-framework/dsl). The `SNAPSHOT`
+of `develop` is on GitHub Packages:
 
 ```xml
 <repositories>
@@ -74,49 +84,58 @@ Each builder resolves its infrastructure adapters through `PluginRegistry` using
 
 ```yaml
 infrastructure:
-  watchdog:
-    url: "http://localhost:8090"
+  watchdog: "http://localhost:8090"
 
   eventBus:
-    type: "kafka"
-    url: "localhost:9092"
+    type: KAFKA
+    configuration:
+      bootstrap.servers: "localhost:9092"
 
   inbox:
-    s3:
+    type: S3
+    configuration:
       bucket: spool-inbox
       region: us-east-1
       endpoint: http://localhost:4566
 
   dataLake:
-    s3:
+    type: S3
+    configuration:
       bucket: spool-datalake
       region: us-east-1
       endpoint: http://localhost:4566
 
-modules:
+  quarantineRepository:
+    type: FILE_SYSTEM
+    configuration:
+      path: /data/spool/quarantine
 
+modules:
   - crawler:
-      id: "my-crawler"
-      source:
-        id: "my-source"
-        format: JSON_ARRAY
-        poll:
-          http:
-            url: "https://api.example.com/data"
+      type: POLL
+      id: my-crawler
       schedule:
         every: 1m
-
-  - janitor:
-      id: "my-janitor"
-      schedule:
-        every: 5s
+      source:
+        type: HTTP
+        configuration:
+          sourceId: my-source
+          url: "https://api.example.com/data"
+        mediaType: JSON_ARRAY
+      eventMapping:
+        namingConvention: SNAKE_CASE
 
   - ingester:
-      id: "my-ingester"
       type: FLUSH
+      id: my-ingester
       configuration:
         size: 100
         every: 10s
+
+  - janitor:
+      id: my-janitor
+      schedule:
+        every: 5s
 ```
 
 ### 2. Boot the pipeline
@@ -130,7 +149,8 @@ public class Main {
 }
 ```
 
-Or through `SpoolRuntime` to also configure OpenTelemetry:
+`fromDescriptor(String)` reads the descriptor from the classpath and `fromDescriptor(Path)` from the file system, so
+the same jar can run with different descriptors. Through `SpoolRuntime`, which also configures OpenTelemetry:
 
 ```java
 SpoolRuntime.builder()
@@ -146,56 +166,75 @@ SpoolRuntime.builder()
 
 ### Infrastructure
 
+Every component has a `type`, the name of its plugin, and a `configuration` with the keys that plugin reads. The
+types and their keys are in [Infrastructure Options](#infrastructure-options).
+
 | Key | Description |
 |---|---|
-| `watchdog.url` | Watchdog HTTP endpoint for heartbeat reporting. |
-| `eventBus.type` | Event bus implementation (`kafka`, `inMemory`). |
-| `inbox.*` | Inbox storage configuration (see [Infrastructure Options](#infrastructure-options)). |
-| `dataLake.*` | Data lake storage configuration. |
-| `quarantineRepository.*` | Where the janitor keeps what is in quarantine (see [Quarantine](#quarantine)). Required by the janitor. |
+| `watchdog` | URL of the watchdog the modules send their heartbeat to. Optional. |
+| `eventBus` | The bus the modules publish and consume events on. |
+| `inbox` | Where the crawler stores what it captures and the janitor looks after it. |
+| `dataLake` | Where the ingester writes. The janitor also writes back to it what was quarantined from bronze. |
+| `quarantineRepository` | Where the janitor keeps what is in quarantine (see [Quarantine](#quarantine)). |
+
+A module only needs the components it uses: a node with only an ingester needs no inbox. A missing component that a
+module needs stops the node with the name of the module.
 
 ---
 
 ### Crawler
 
-Polls a source on a schedule and stores each record in the inbox.
+Reads a source and stores each record in the inbox. A `POLL` crawler asks the source on its schedule; a `STREAM`
+crawler listens to it.
 
 ```yaml
 - crawler:
-    id: "my-crawler"
-    source:
-      id: "my-source"
-      format: JSON_ARRAY        # JSON_ARRAY, JSON_OBJECT, YAML_ARRAY, RESULT_SET
-      rootPath: "results"       # dot-notation path to the records array (optional)
-      enrichment:
-        - source: "entityName"  # field injected into every emitted envelope
-      poll:
-        http:
-          url: "https://api.example.com/data"
+    type: POLL
+    id: my-crawler
     schedule:
-      every: 1m             # without a schedule, the crawler polls once
+      every: 1m                 # without a schedule, a POLL crawler polls once
+    source:
+      type: HTTP
+      configuration:
+        sourceId: my-source
+        url: "https://api.example.com/data"
+      mediaType: JSON_ARRAY     # how the response is split into records
+      rootPath: results         # dot-notation path to the records, optional
+      enrichment:
+        - source: entityName    # field copied into every record
+          target: entity        # with this name, optional
     eventMapping:
       namingConvention: SNAKE_CASE
       attributeList:
-        - value: "entityName"
+        - entityName
+    errorRouter:
+      type: DEFAULT
 ```
 
-Poll source types: `http` · `file` · `database` · `custom`
+| Key | Description |
+|---|---|
+| `type` | `POLL` or `STREAM`. |
+| `source.type` | The source plugin: `HTTP` for `POLL`, `IN_MEMORY` for `STREAM`. |
+| `source.mediaType` | `JSON`, `JSON_ARRAY`, `JSON_OBJECT`, `EVENT_CLASS`, `EVENT_CLASS_ARRAY` or `PDF`. |
+| `eventMapping.namingConvention` | How field names are written in the events. |
+| `errorRouter` | Where the crawler reports what fails. Optional; `DEFAULT` when missing. |
 
 ---
 
 ### Janitor
 
-Runs on a schedule to keep the inbox healthy — republishes stuck envelopes, quarantines failed ones, removes expired ones.
+Runs on a schedule to keep the inbox healthy: republishes stuck envelopes, quarantines failed ones, removes expired
+ones.
 
 ```yaml
 - janitor:
-    id: "my-janitor"
+    id: my-janitor
     schedule:
-      every: 5s             # 5s by default
+      every: 5s                 # 5s by default
     configuration:
       threshold: 10s
       ttl: 1d
+      maxInboxUpdateAttempts: 3
 ```
 
 | Key | Description |
@@ -203,7 +242,7 @@ Runs on a schedule to keep the inbox healthy — republishes stuck envelopes, qu
 | `schedule.every` | How often the janitor runs a round. |
 | `configuration.threshold` | How long an envelope can stay without moving before it is republished. |
 | `configuration.ttl` | How long an envelope stays in the inbox before it expires. |
-| `configuration.maxInboxUpdateAttempts` | Rounds an event is tried when the inbox fails to apply it. |
+| `configuration.maxInboxUpdateAttempts` | Rounds an event is tried when the inbox fails to apply it. 3 by default. |
 
 ### Durations
 
@@ -229,7 +268,7 @@ infrastructure:
   quarantineRepository:
     type: FILE_SYSTEM
     configuration:
-      path: "/spool/quarantine"   # one folder per status, one JSON file per envelope named after its key
+      path: /data/spool/quarantine   # one folder per status, one JSON file per envelope named after its key
 ```
 
 The janitor records what comes from the inbox and the mounter what it rejects; the ingester just publishes `EnvelopeQuarantined`. A pending record can be republished as it was, republished with a corrected payload (under a new key, with the original one in its `CORRECTED_FROM` metadata) or purged, even after the inbox has removed the envelope. Each of these marks the record and publishes `EnvelopeRepublished` or `EnvelopePurged`. If a resolved envelope comes back into quarantine, its record is reopened with a new entry.
@@ -253,10 +292,10 @@ Consumes events from the bus and writes envelopes to the data lake.
 
 ```yaml
 - ingester:
-    id: "my-ingester"
     type: FLUSH
+    id: my-ingester
     configuration:
-      size: 100             # 100 by default
+      size: 100                 # 100 by default
       every: 10s
 ```
 
@@ -265,10 +304,50 @@ Consumes events from the bus and writes envelopes to the data lake.
 | `FLUSH` | Writes in batches: when `size` envelopes arrive or, if set, `every` that long. |
 | `REACTIVE` | Writes each envelope immediately on arrival. |
 
+---
+
+### Authentication
+
+The HTTP entries of a node check who calls them with a provider declared by name in the `authentication` block
+([ADR-013](https://linear.app/javier-castilla/document/adr-013-toda-entrada-http-se-autentica-con-un-proveedor-con-nombre-7a1ffe638f42)).
+Secrets come from the environment (see [Variables](#variables)).
+
+```yaml
+authentication:
+  operators:
+    type: OIDC
+    configuration:
+      issuer: https://identity.example/realms/spool
+      audience: spool-janitor
+  webhooks:
+    type: HMAC_SIGNATURE
+    configuration:
+      header: X-Signature-256
+      secret: ${env:WEBHOOK_SECRET}
+
+infrastructure:
+  eventBus:
+    type: IN_MEMORY
+```
+
+| Type | Required keys | Optional keys |
+|---|---|---|
+| `OIDC` | `issuer`, `audience` | `jwksUri`, `rolesClaim` |
+| `HMAC_SIGNATURE` | `header`, `secret` | `timestampHeader`, `tolerance`, `roles` |
+
+---
+
 ### Includes and profiles
 
 A descriptor can take part of its keys from other files, and can change some of them for an environment
 ([ADR-016](https://linear.app/javier-castilla/document/adr-016-un-descriptor-puede-incluir-otros-ficheros-y-elegir-al-b5e8fce73f02)).
+
+```yaml
+# shared/infrastructure.yaml
+infrastructure:
+  eventBus:
+    type: IN_MEMORY
+```
 
 ```yaml
 include:
@@ -280,15 +359,16 @@ profiles:
       eventBus:
         type: KAFKA
         configuration:
-          bootstrapServers: "kafka:9092"
+          bootstrap.servers: "kafka:9092"
 
 modules:
   - ingester:
-      id: "my-ingester"
+      type: REACTIVE
+      id: my-ingester
 ```
 
-- `SpoolNodeDSL.fromDescriptor(String)` reads the descriptor from the classpath and `SpoolNodeDSL.fromDescriptor(Path)`
-  from the file system. Included files are read from the same place, next to the file that names them.
+- Included files are read from the same place as the descriptor, classpath or file system, next to the file that
+  names them.
 - Files are combined in the order of `include`, and the file that includes them goes on top. Objects are combined
   key by key; any other value, lists included, is replaced whole.
 - A profile changes only the keys it declares. Choose it with `SpoolNodeDSL.fromDescriptor("/Spool.yaml", "production")`
@@ -312,6 +392,8 @@ profiles:
       root: /srv/spool
 
 infrastructure:
+  eventBus:
+    type: IN_MEMORY
   inbox:
     type: FILE_SYSTEM
     configuration:
@@ -320,6 +402,7 @@ infrastructure:
     type: S3
     configuration:
       bucket: ${env:SPOOL_BUCKET}
+      region: us-east-1
       endpoint: ${env:S3_ENDPOINT:-http://localhost:4566}
 ```
 
@@ -337,23 +420,19 @@ infrastructure:
 
 ## Infrastructure Options
 
-| Component | Built-in types |
-|---|---|
-| `eventBus` | `kafka` · `inMemory` |
-| `inbox` | `s3` · `filesystem` · `inMemory` · `custom` |
-| `dataLake` | `s3` · `filesystem` · `inMemory` · `custom` |
-| `quarantineRepository` | `FILE_SYSTEM` |
+| Component | Types | Configuration |
+|---|---|---|
+| `eventBus` | `IN_MEMORY` | none |
+| | `KAFKA` | `bootstrap.servers`, and `subscriber.id` optional |
+| `inbox` | `FILE_SYSTEM` | `path` |
+| | `S3` | `bucket`, `region`, `endpoint` |
+| `dataLake` | `FILE_SYSTEM` | `path` |
+| | `S3` | `bucket`, `region`, `endpoint` |
+| `quarantineRepository` | `FILE_SYSTEM` | `path` |
 
-Every component supports a `custom` type backed by the `PluginRegistry` SPI (see `spool-infrastructure`):
-
-```yaml
-inbox:
-  custom:
-    pluginName: "my-inbox"
-    configuration:
-      host: "localhost"
-      port: "5432"
-```
+A new adapter is a plugin: a class that implements the provider interface of its port (`InboxWriterProvider`,
+`EventBusProvider`...), annotated with `@SpoolPlugin`. The name it returns from `name()` is the `type` the descriptor
+uses, and an unknown `type` stops the node listing the known ones.
 
 ---
 
