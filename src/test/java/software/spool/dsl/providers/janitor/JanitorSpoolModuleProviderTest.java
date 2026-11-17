@@ -44,6 +44,18 @@ class JanitorSpoolModuleProviderTest {
     }
 
     @Test
+    void buildMaxInboxUpdateAttempts_withTheKey_returnsItAsAnInteger() {
+        JanitorDescriptor janitor = new JanitorDescriptor("j1", Map.of("maxInboxUpdateAttempts", "5"));
+
+        assertThat(provider.buildMaxInboxUpdateAttempts(janitor)).isEqualTo(5);
+    }
+
+    @Test
+    void buildMaxInboxUpdateAttempts_withoutTheKey_isNullSoTheBuilderDefaultApplies() {
+        assertThat(provider.buildMaxInboxUpdateAttempts(new JanitorDescriptor("j1", Map.of()))).isNull();
+    }
+
+    @Test
     void buildQuarantineTtl_withoutTheKey_isNullSoNothingIsDeleted() {
         assertThat(provider.buildQuarantineTtl(new JanitorDescriptor("j1", Map.of()))).isNull();
     }

@@ -50,7 +50,8 @@ public class JanitorSpoolModuleProvider implements SpoolModuleProvider {
                 .withMillisecondsThreshold(buildWorkers(janitor))
                 .withMillisecondsTtl(buildTtl(janitor))
                 .withMillisecondsQuarantineTtl(buildQuarantineTtl(janitor))
-                .withMillisecondsQuarantineRetention(buildQuarantineRetention(janitor));
+                .withMillisecondsQuarantineRetention(buildQuarantineRetention(janitor))
+                .withMaxInboxUpdateAttempts(buildMaxInboxUpdateAttempts(janitor));
         if (infrastructure.dataLake() != null) {
             builder.rewriteBronzeIn(InfrastructurePluginFactory.bronzeRepository(infrastructure));
         }
@@ -75,6 +76,11 @@ public class JanitorSpoolModuleProvider implements SpoolModuleProvider {
     Integer buildQuarantineTtl(JanitorDescriptor janitor) {
         String ttl = janitor.configuration().get("millisecondsQuarantineTTL");
         return ttl != null ? Integer.parseInt(ttl) : null;
+    }
+
+    Integer buildMaxInboxUpdateAttempts(JanitorDescriptor janitor) {
+        String attempts = janitor.configuration().get("maxInboxUpdateAttempts");
+        return attempts != null ? Integer.parseInt(attempts) : null;
     }
 
     Long buildQuarantineRetention(JanitorDescriptor janitor) {

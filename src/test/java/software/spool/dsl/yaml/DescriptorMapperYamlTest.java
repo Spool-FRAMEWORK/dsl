@@ -175,6 +175,43 @@ class DescriptorMapperYamlTest {
     }
 
     @Test
+    void map_janitorWithMaxInboxUpdateAttempts_keepsIt() {
+        String yaml = """
+                infrastructure:
+                  eventBus: {type: IN_MEMORY}
+                  inbox: {type: FILE_SYSTEM}
+                modules:
+                  - janitor:
+                      id: j1
+                      configuration:
+                        maxInboxUpdateAttempts: 5
+                """;
+
+        JanitorDescriptor janitor = (JanitorDescriptor) DescriptorMapper.map(read(yaml.getBytes(StandardCharsets.UTF_8)))
+                .modules().get(0);
+
+        assertThat(janitor.configuration()).containsEntry("maxInboxUpdateAttempts", "5");
+    }
+
+    @Test
+    void map_janitorWithMaxInboxUpdateAttemptsThatIsNotAnInteger_namesTheKey() {
+        String yaml = """
+                infrastructure:
+                  eventBus: {type: IN_MEMORY}
+                  inbox: {type: FILE_SYSTEM}
+                modules:
+                  - janitor:
+                      id: j1
+                      configuration:
+                        maxInboxUpdateAttempts: many
+                """;
+
+        assertThatThrownBy(() -> DescriptorMapper.map(read(yaml.getBytes(StandardCharsets.UTF_8))))
+                .isInstanceOf(InvalidDescriptorException.class)
+                .hasMessageContaining("maxInboxUpdateAttempts must be an integer, got 'many'");
+    }
+
+    @Test
     void map_janitorWithoutAQuarantineTtl_isValid() {
         String yaml = """
                 infrastructure:
