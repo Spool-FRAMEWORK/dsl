@@ -430,6 +430,9 @@ infrastructure:
 | | `S3` | `bucket`, `region`, `endpoint` |
 | `quarantineRepository` | `FILE_SYSTEM` | `path` |
 
+Every port, its types and their keys are in the [catalogue of adapters](https://github.com/Spool-FRAMEWORK/infrastructure#available-adapters)
+of `spool-infrastructure`. There is no relational backend (no PostgreSQL, no JDBC).
+
 A new adapter is a plugin: a class that implements the provider interface of its port (`InboxWriterProvider`,
 `EventBusProvider`...), annotated with `@SpoolPlugin`. The name it returns from `name()` is the `type` the descriptor
 uses, and an unknown `type` stops the node listing the known ones.
