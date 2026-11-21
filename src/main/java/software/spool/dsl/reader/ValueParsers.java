@@ -1,7 +1,10 @@
 package software.spool.dsl.reader;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -19,6 +22,28 @@ public final class ValueParsers {
             whole(raw).filter(v -> v >= Integer.MIN_VALUE && v <= Integer.MAX_VALUE).map(Long::intValue));
 
     public static final ValueParser<Long> LONG = of("an integer", ValueParsers::whole);
+
+    public static final ValueParser<Boolean> BOOLEAN = of("true or false", raw -> {
+        if (raw instanceof Boolean value) return Optional.of(value);
+        if (raw instanceof String text && (text.strip().equals("true") || text.strip().equals("false"))) {
+            return Optional.of(Boolean.parseBoolean(text.strip()));
+        }
+        return Optional.empty();
+    });
+
+    /** A list whose entries are plain texts or objects with a {@code value}; the YAML accepts both. */
+    public static final ValueParser<List<String>> TEXTS = of("a list of texts", raw -> {
+        if (!(raw instanceof List<?> entries)) return Optional.empty();
+        List<String> texts = new ArrayList<>();
+        for (Object entry : entries) {
+            Object value = entry instanceof Map<?, ?> object ? object.get("value") : entry;
+            if (value == null) continue;
+            Optional<String> text = STRING.parse(value);
+            if (text.isEmpty()) return Optional.empty();
+            texts.add(text.get());
+        }
+        return Optional.of(texts);
+    });
 
     public static final ValueParser<Duration> DURATION = of("a duration such as 30d or P30D", ReadableDuration::parse);
 

@@ -22,6 +22,7 @@ Every YAML example in this README is loaded by `ReadmeExamplesTest`, so it is th
   - [Durations](#durations)
   - [Quarantine](#quarantine)
   - [Ingester](#ingester)
+  - [Mounter](#mounter)
   - [Authentication](#authentication)
   - [Includes and profiles](#includes-and-profiles)
   - [Variables](#variables)
@@ -175,8 +176,9 @@ types and their keys are in [Infrastructure Options](#infrastructure-options).
 | `watchdog` | URL of the watchdog the modules send their heartbeat to. Optional. |
 | `eventBus` | The bus the modules publish and consume events on. |
 | `inbox` | Where the crawler stores what it captures and the janitor looks after it. |
-| `dataLake` | Where the ingester writes. The janitor also writes back to it what was quarantined from bronze. |
-| `quarantineRepository` | Where the janitor keeps what is in quarantine (see [Quarantine](#quarantine)). |
+| `dataLake` | Where the ingester writes bronze. The mounter reads it and writes silver into it, and the janitor writes back to it what was quarantined from bronze. |
+| `dataMart` | Where mounters to gold write. Only they need it. |
+| `quarantineRepository` | Where the janitor and the mounters to silver keep what is in quarantine (see [Quarantine](#quarantine)). |
 
 A module only needs the components it uses: a node with only an ingester needs no inbox. A missing component that a
 module needs stops the node with the name of the module.
@@ -362,6 +364,44 @@ Consumes events from the bus and writes envelopes to the data lake.
 
 ---
 
+### Mounter
+
+Fills one data mart from a partition of the data lake. A `TRANSFORMATION` mount reads bronze and writes silver in the
+`dataLake`; an `AGGREGATION` mount reads silver and writes gold in the `dataMart`.
+
+```yaml
+- mounter:
+    id: payments-silver
+    type: POLL
+    schedule:
+      every: 1m
+    mode: TRANSFORMATION
+    validate: true
+    read:
+      partitions: ["source=payments/eventType=Payment"]
+    write:
+      dataMart: payments
+      partitioning:
+        type: ATTRIBUTES
+        attributes: [payload.country]
+```
+
+| Key | Description |
+|---|---|
+| `type` | `POLL` mounts every `schedule.every`, which it requires; `REACTIVE` mounts each time the ingester reports a written partition. |
+| `mode` | `TRANSFORMATION`, from bronze to silver, or `AGGREGATION`, from silver to gold. |
+| `validate` | Validates on read what is promoted to silver, with the validators of each source. Only for `TRANSFORMATION`. `false` by default. |
+| `aggregator` | Full name of a class that implements `MountAggregator` and has a public constructor without arguments. Without it, records are copied as they are. |
+| `read.partitions` | The partition to read, written as a path. A list, with a single partition for now. |
+| `write.dataMart` | The data mart the mounter fills. |
+| `write.partitioning.type` | `SAME_AS_SOURCE` writes each record in the partition it comes with: the one it had in the data lake, or the one the aggregator gave it. `ATTRIBUTES` builds it from `write.partitioning.attributes`, such as `payload.country`. |
+
+A mounter to silver always has a quarantine, so it needs `infrastructure.quarantineRepository`. A record that fails
+validation, or that lacks a partition attribute, goes to it and is removed from bronze. Writing silver needs a data
+lake type that mounters can write to: `FILE_SYSTEM` today.
+
+---
+
 ### Authentication
 
 The HTTP entries of a node check who calls them with a provider declared by name in the `authentication` block
@@ -484,6 +524,8 @@ infrastructure:
 | | `S3` | `bucket`, `region`, `endpoint` |
 | `dataLake` | `FILE_SYSTEM` | `path` |
 | | `S3` | `bucket`, `region`, `endpoint` |
+| `dataMart` | `FILE_SYSTEM` | `path` |
+| | `RAW_FILE_SYSTEM` | `path` |
 | `quarantineRepository` | `FILE_SYSTEM` | `path` |
 
 Every port, its types and their keys are in the [catalogue of adapters](https://github.com/Spool-FRAMEWORK/infrastructure#available-adapters)

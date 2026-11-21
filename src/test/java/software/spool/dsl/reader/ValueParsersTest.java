@@ -25,6 +25,18 @@ class ValueParsersTest {
     }
 
     @Test
+    void bool_acceptsBooleansAndTheirText() {
+        assertThat(ValueParsers.BOOLEAN.parse(true)).contains(true);
+        assertThat(ValueParsers.BOOLEAN.parse(" false ")).contains(false);
+    }
+
+    @Test
+    void bool_rejectsAnythingElse() {
+        assertThat(ValueParsers.BOOLEAN.parse("yes")).isEmpty();
+        assertThat(ValueParsers.BOOLEAN.parse(1)).isEmpty();
+    }
+
+    @Test
     void integer_acceptsNumbersAndNumericText() {
         assertThat(ValueParsers.INTEGER.parse(5000)).contains(5000);
         assertThat(ValueParsers.INTEGER.parse(" 42 ")).contains(42);

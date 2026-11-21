@@ -17,29 +17,12 @@ import software.spool.dsl.reader.ValueParser;
 import software.spool.dsl.reader.ValueParsers;
 import software.spool.infrastructure.spi.SpoolPlugin;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 
 import static software.spool.dsl.reader.ReadableDuration.insteadOfMilliseconds;
 
 @SpoolPlugin(ModuleDescriptorProvider.class)
 public class CrawlerModuleDescriptorProvider implements ModuleDescriptorProvider {
-
-    /** A list whose entries are plain texts or objects with a {@code value}; the YAML accepts both. */
-    private static final ValueParser<List<String>> TEXTS = ValueParsers.of("a list of texts", raw -> {
-        if (!(raw instanceof List<?> entries)) return Optional.empty();
-        List<String> texts = new ArrayList<>();
-        for (Object entry : entries) {
-            Object value = entry instanceof Map<?, ?> object ? object.get("value") : entry;
-            if (value == null) continue;
-            Optional<String> text = ValueParsers.STRING.parse(value);
-            if (text.isEmpty()) return Optional.empty();
-            texts.add(text.get());
-        }
-        return Optional.of(texts);
-    });
 
     /** An alias such as JSON or a full media type such as application/json, which is what the records are labelled. */
     private static final ValueParser<MediaType> MEDIA_TYPE = ValueParsers.of("a media type such as JSON or application/json",
@@ -90,8 +73,8 @@ public class CrawlerModuleDescriptorProvider implements ModuleDescriptorProvider
         return new EventMappingDescriptor(
                 mapping.required("namingConvention", ValueParsers.oneOf(NamingConvention.class)),
                 EventClasses.in(mapping.optional("eventPackage", ValueParsers.STRING).orElse(EventClasses.DEFAULT_PACKAGE))
-                        .resolve(mapping.path() + ".domainMappingList", mapping.optional("domainMappingList", TEXTS).orElse(List.of())),
-                mapping.optional("attributeList", TEXTS).orElse(List.of())
+                        .resolve(mapping.path() + ".domainMappingList", mapping.optional("domainMappingList", ValueParsers.TEXTS).orElse(List.of())),
+                mapping.optional("attributeList", ValueParsers.TEXTS).orElse(List.of())
         );
     }
 }

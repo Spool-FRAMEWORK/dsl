@@ -46,6 +46,10 @@ public class DescriptorUnderTest {
         }
     }
 
+    public boolean hasLoaded() {
+        return loaded.isPresent();
+    }
+
     /** What loading gave, failing the scenario when it did not load. */
     public SpoolNodeDescriptor loaded() {
         assertThat(failure).as(() -> "the descriptor was expected to load, but: "

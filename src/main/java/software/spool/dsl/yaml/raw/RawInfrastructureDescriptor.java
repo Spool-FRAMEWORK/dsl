@@ -9,11 +9,12 @@ public record RawInfrastructureDescriptor(
         RawComponentDescriptor inbox,
         RawComponentDescriptor dataLake,
         RawComponentDescriptor quarantineRepository,
-        RawComponentDescriptor quarantineStore
+        RawComponentDescriptor quarantineStore,
+        RawComponentDescriptor dataMart
 ) {
     public RawInfrastructureDescriptor(String watchdog, RawComponentDescriptor eventBus,
                                        RawComponentDescriptor inbox, RawComponentDescriptor dataLake) {
-        this(watchdog, eventBus, inbox, dataLake, null, null);
+        this(watchdog, eventBus, inbox, dataLake, null, null, null);
     }
 
     static RawInfrastructureDescriptor from(DescriptorReader infrastructure) {
@@ -24,7 +25,8 @@ public record RawInfrastructureDescriptor(
                 component(infrastructure, "inbox"),
                 component(infrastructure, "dataLake"),
                 component(infrastructure, "quarantineRepository"),
-                component(infrastructure, "quarantineStore")
+                component(infrastructure, "quarantineStore"),
+                component(infrastructure, "dataMart")
         );
     }
 

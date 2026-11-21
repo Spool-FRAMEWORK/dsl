@@ -52,7 +52,8 @@ public final class DescriptorMapper {
                 toComponent("infrastructure.eventBus", raw.eventBus()),
                 toComponent("infrastructure.inbox", raw.inbox()),
                 toComponent("infrastructure.dataLake", raw.dataLake()),
-                toComponent("infrastructure.quarantineRepository", raw.quarantineRepository())
+                toComponent("infrastructure.quarantineRepository", raw.quarantineRepository()),
+                toComponent("infrastructure.dataMart", raw.dataMart())
         );
     }
 

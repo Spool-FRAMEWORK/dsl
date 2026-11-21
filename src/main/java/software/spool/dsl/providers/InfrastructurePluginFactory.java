@@ -19,6 +19,12 @@ import software.spool.dsl.reader.DescriptorReader;
 import software.spool.infrastructure.spi.provider.PluginConfiguration;
 import software.spool.infrastructure.spi.provider.bus.EventBusProvider;
 import software.spool.infrastructure.spi.provider.dataLake.DataLakeWriterProvider;
+import software.spool.infrastructure.spi.provider.dataLake.PartitionedReaderProvider;
+import software.spool.infrastructure.spi.provider.datamart.DataMartWriterProvider;
+import software.spool.mounter.api.port.DataMartWriter;
+import software.spool.mounter.api.port.PartitionedReader;
+import software.spool.core.port.datalake.DataLakeEnvelopeRemover;
+import software.spool.infrastructure.spi.provider.dataLake.DataLakeEnvelopeRemoverProvider;
 import software.spool.infrastructure.spi.provider.inbox.InboxEnvelopeRemoverProvider;
 import software.spool.infrastructure.spi.provider.inbox.InboxReaderProvider;
 import software.spool.infrastructure.spi.provider.inbox.InboxUpdaterProvider;
@@ -82,6 +88,30 @@ public final class InfrastructurePluginFactory {
     public static DataLakeWriter dataLakeWriter(InfrastructureDescriptor infra) {
         InfrastructureComponentDescriptor dataLake = required(infra.dataLake(), "dataLake");
         return KnownPlugins.get(DataLakeWriterProvider.class, dataLake.pluginName(), "infrastructure.dataLake.type", "data lake writer")
+                .create(dataLake.toPluginConfiguration());
+    }
+
+    public static DataLakeEnvelopeRemover dataLakeEnvelopeRemover(InfrastructureDescriptor infra) {
+        InfrastructureComponentDescriptor dataLake = required(infra.dataLake(), "dataLake");
+        return KnownPlugins.get(DataLakeEnvelopeRemoverProvider.class, dataLake.pluginName(), "infrastructure.dataLake.type", "data lake envelope remover")
+                .create(dataLake.toPluginConfiguration());
+    }
+
+    public static PartitionedReader partitionedReader(InfrastructureDescriptor infra) {
+        InfrastructureComponentDescriptor dataLake = required(infra.dataLake(), "dataLake");
+        return KnownPlugins.get(PartitionedReaderProvider.class, dataLake.pluginName(), "infrastructure.dataLake.type", "partitioned reader")
+                .create(dataLake.toPluginConfiguration());
+    }
+
+    public static DataMartWriter dataMartWriter(InfrastructureDescriptor infra) {
+        InfrastructureComponentDescriptor dataMart = required(infra.dataMart(), "dataMart");
+        return KnownPlugins.get(DataMartWriterProvider.class, dataMart.pluginName(), "infrastructure.dataMart.type", "data mart writer")
+                .create(dataMart.toPluginConfiguration());
+    }
+
+    public static DataMartWriter dataLakeMountWriter(InfrastructureDescriptor infra) {
+        InfrastructureComponentDescriptor dataLake = required(infra.dataLake(), "dataLake");
+        return KnownPlugins.get(DataMartWriterProvider.class, dataLake.pluginName(), "infrastructure.dataLake.type", "data lake mount writer")
                 .create(dataLake.toPluginConfiguration());
     }
 

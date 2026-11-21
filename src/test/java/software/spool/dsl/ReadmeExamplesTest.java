@@ -17,6 +17,7 @@ import software.spool.infrastructure.spi.provider.StreamSourceProvider;
 import software.spool.infrastructure.spi.provider.authentication.RequestAuthenticatorProvider;
 import software.spool.infrastructure.spi.provider.bus.EventBusProvider;
 import software.spool.infrastructure.spi.provider.dataLake.DataLakeWriterProvider;
+import software.spool.infrastructure.spi.provider.datamart.DataMartWriterProvider;
 import software.spool.infrastructure.spi.provider.inbox.InboxWriterProvider;
 import software.spool.infrastructure.spi.provider.quarantine.QuarantineRepositoryProvider;
 import software.spool.infrastructure.spi.provider.serde.NormalizerProvider;
@@ -81,6 +82,7 @@ class ReadmeExamplesTest {
                 case "eventBus" -> exists(EventBusProvider.class, declared, component);
                 case "inbox" -> exists(InboxWriterProvider.class, declared, component);
                 case "dataLake" -> exists(DataLakeWriterProvider.class, declared, component);
+                case "dataMart" -> exists(DataMartWriterProvider.class, declared, component);
                 case "quarantineRepository" -> exists(QuarantineRepositoryProvider.class, declared, component);
                 default -> throw new AssertionError("unknown component in the infrastructure table: " + component);
             }
@@ -113,6 +115,7 @@ class ReadmeExamplesTest {
         exists(InboxWriterProvider.class, infrastructure.inbox(), "infrastructure.inbox");
         exists(DataLakeWriterProvider.class, infrastructure.dataLake(), "infrastructure.dataLake");
         exists(QuarantineRepositoryProvider.class, infrastructure.quarantineRepository(), "infrastructure.quarantineRepository");
+        exists(DataMartWriterProvider.class, infrastructure.dataMart(), "infrastructure.dataMart");
         node.authentication().forEach((name, provider) ->
                 KnownPlugins.get(RequestAuthenticatorProvider.class, provider.type(), "authentication." + name, "authentication"));
         node.modules().stream().filter(CrawlerDescriptor.class::isInstance).map(CrawlerDescriptor.class::cast)
