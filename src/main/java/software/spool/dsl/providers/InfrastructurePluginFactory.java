@@ -18,16 +18,14 @@ import software.spool.dsl.descriptors.module.crawler.source.SourceDescriptor;
 import software.spool.dsl.reader.DescriptorReader;
 import software.spool.infrastructure.spi.provider.PluginConfiguration;
 import software.spool.infrastructure.spi.provider.bus.EventBusProvider;
-import software.spool.infrastructure.spi.provider.dataLake.BronzeWriterProvider;
 import software.spool.infrastructure.spi.provider.dataLake.DataLakeWriterProvider;
-import software.spool.core.port.datalake.BronzeWriter;
 import software.spool.infrastructure.spi.provider.inbox.InboxEnvelopeRemoverProvider;
 import software.spool.infrastructure.spi.provider.inbox.InboxReaderProvider;
 import software.spool.infrastructure.spi.provider.inbox.InboxUpdaterProvider;
 import software.spool.infrastructure.spi.provider.inbox.InboxWriterProvider;
 import software.spool.infrastructure.spi.provider.quarantine.QuarantineRepositoryProvider;
 import software.spool.infrastructure.spi.provider.serde.NormalizerProvider;
-import software.spool.ingester.api.port.DataLakeWriter;
+import software.spool.core.port.datalake.DataLakeWriter;
 
 /**
  * Builds the infrastructure ports a module asks for. A component is required only when a module asks
@@ -85,12 +83,6 @@ public final class InfrastructurePluginFactory {
     public static DataLakeWriter dataLakeWriter(InfrastructureDescriptor infra) {
         InfrastructureComponentDescriptor dataLake = required(infra.dataLake(), "dataLake");
         return KnownPlugins.get(DataLakeWriterProvider.class, dataLake.pluginName(), "infrastructure.dataLake.type", "data lake writer")
-                .create(dataLake.toPluginConfiguration());
-    }
-
-    public static BronzeWriter bronzeWriter(InfrastructureDescriptor infra) {
-        InfrastructureComponentDescriptor dataLake = required(infra.dataLake(), "dataLake");
-        return KnownPlugins.get(BronzeWriterProvider.class, dataLake.pluginName(), "infrastructure.dataLake.type", "bronze writer")
                 .create(dataLake.toPluginConfiguration());
     }
 
