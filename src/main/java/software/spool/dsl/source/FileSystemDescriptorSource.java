@@ -3,7 +3,9 @@ package software.spool.dsl.source;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 public final class FileSystemDescriptorSource implements DescriptorSource {
 
@@ -22,6 +24,15 @@ public final class FileSystemDescriptorSource implements DescriptorSource {
         Path file = Path.of(location);
         if (!Files.isRegularFile(file)) return Optional.empty();
         return Optional.of(Files.readAllBytes(file));
+    }
+
+    @Override
+    public Optional<List<String>> list(String folder) throws IOException {
+        Path root = Path.of(folder);
+        if (!Files.isDirectory(root)) return Optional.empty();
+        try (Stream<Path> files = Files.walk(root)) {
+            return Optional.of(files.filter(Files::isRegularFile).map(FileSystemDescriptorSource::locationOf).toList());
+        }
     }
 
     @Override

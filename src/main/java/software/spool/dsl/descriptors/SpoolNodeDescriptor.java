@@ -11,6 +11,7 @@ import java.util.Optional;
 
 public record SpoolNodeDescriptor(
         Optional<String> watchdog,
+        ServerDescriptor server,
         DeclaredInfrastructure infrastructure,
         List<DeclaredModule> declaredModules,
         Map<String, AuthenticationDescriptor> authentication
@@ -21,7 +22,7 @@ public record SpoolNodeDescriptor(
     }
 
     public SpoolNodeDescriptor(Optional<String> watchdog, DeclaredInfrastructure infrastructure, List<DeclaredModule> modules) {
-        this(watchdog, infrastructure, modules, Map.of());
+        this(watchdog, ServerDescriptor.defaults(), infrastructure, modules, Map.of());
     }
 
     public List<SpoolModuleDescriptor> modules() {

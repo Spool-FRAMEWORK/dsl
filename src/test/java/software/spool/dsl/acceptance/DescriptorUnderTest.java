@@ -8,6 +8,7 @@ import software.spool.dsl.source.DescriptorSource;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -72,6 +73,11 @@ public class DescriptorUnderTest {
         @Override
         public Optional<byte[]> read(String location) {
             return Optional.ofNullable(files.get(location)).map(content -> content.getBytes(StandardCharsets.UTF_8));
+        }
+
+        @Override
+        public Optional<List<String>> list(String folder) {
+            return Optional.empty();
         }
 
         @Override

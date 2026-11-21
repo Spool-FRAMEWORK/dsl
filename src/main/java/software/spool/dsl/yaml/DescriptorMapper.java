@@ -30,6 +30,7 @@ public final class DescriptorMapper {
         DeclaredInfrastructure infrastructure = InfrastructureMapper.map(raw.infrastructure());
         return new SpoolNodeDescriptor(
                 Optional.ofNullable(raw.watchdog()),
+                raw.server(),
                 infrastructure,
                 toModules(raw.modules(), infrastructure),
                 toAuthentication(raw.authentication())

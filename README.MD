@@ -166,6 +166,36 @@ SpoolRuntime.builder()
         .start();
 ```
 
+### Several nodes from a folder
+
+`SpoolNodeDSL.fromFolder(Path)` and `fromFolder(String)` give a node for every file of a folder and its subfolders
+whose name ends in `.spool.yaml`, from the file system or from the classpath (also inside a jar). Any other file is
+not a node, so the pieces the descriptors include can live next to them:
+
+```
+pipelines/
+├── shared/
+│   └── kafka.yaml              included by both, not a node
+├── boe/
+│   ├── boe.spool.yaml          a node
+│   └── boe-modules.yaml        included by boe, not a node
+└── bocm/
+    └── bocm.spool.yaml         a node
+```
+
+Each node opens its HTTP server on the port of `server.port`, 8080 when the descriptor does not say it:
+
+```yaml
+server:
+  port: 8091
+infrastructure:
+  bus: {kind: EVENT_BUS, type: IN_MEMORY}
+```
+
+Two descriptors of the same process on the same port stop the load, naming both. So do a descriptor that cannot be
+loaded, naming its file, and a folder without any `.spool.yaml`. One node with its modules in several files is not
+this: it is one descriptor with includes (see [Includes and profiles](#includes-and-profiles)).
+
 ---
 
 ## Spool.yaml Reference

@@ -9,6 +9,7 @@ import software.spool.dsl.source.FileSystemDescriptorSource;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Optional;
 
 public abstract class SpoolNodeDSL {
@@ -36,9 +37,25 @@ public abstract class SpoolNodeDSL {
                 Optional.of(profile), SpoolNodeDSL::fromDescriptor);
     }
 
+    /** The nodes of every {@value DescriptorFolder#NODE_SUFFIX} in a folder of the file system and its subfolders. */
+    public static List<SpoolNode> fromFolder(Path folder) throws IOException {
+        DescriptorFolder descriptors = DescriptorFolder.fromFileSystem();
+        return nodesOf(descriptors.load(FileSystemDescriptorSource.locationOf(folder), descriptors.profileOfTheEnvironment()));
+    }
+
+    /** The nodes of every {@value DescriptorFolder#NODE_SUFFIX} in a folder of the classpath, also inside a jar. */
+    public static List<SpoolNode> fromFolder(String folder) throws IOException {
+        DescriptorFolder descriptors = DescriptorFolder.fromClasspath();
+        return nodesOf(descriptors.load(folder, descriptors.profileOfTheEnvironment()));
+    }
+
+    private static List<SpoolNode> nodesOf(List<NamedDescriptor> descriptors) {
+        return descriptors.stream().map(named -> fromDescriptor(named.descriptor())).toList();
+    }
+
     public static SpoolNode fromDescriptor(SpoolNodeDescriptor descriptor) {
         RequestAuthenticators authentication = RequestAuthenticators.from(descriptor.authentication());
-        SpoolNode node = SpoolNode.create(new OpenTelemetryMetricsRegistry());
+        SpoolNode node = SpoolNode.create(descriptor.server().port(), new OpenTelemetryMetricsRegistry());
         descriptor.declaredModules().stream()
                 .map(module -> ModuleProviderRegistry.build(module.descriptor(), descriptor.infrastructureOf(module), authentication))
                 .forEach(node::register);
