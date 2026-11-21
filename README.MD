@@ -375,6 +375,37 @@ ones.
 | `configuration.ttl` | How long an envelope stays in the inbox before it expires. |
 | `configuration.maxInboxUpdateAttempts` | Rounds an event is tried when the inbox fails to apply it. 3 by default. |
 
+With a `quarantineServer` block, the janitor serves on its node's HTTP server an API to review and resolve the
+quarantine ([ADR-014](https://linear.app/javier-castilla/document/adr-014-el-janitor-expone-una-api-http-para-revisar-y-resolver-la-e7e6abbdabeb)).
+Without it, there is no API.
+
+```yaml
+- janitor:
+    id: orders-janitor
+    quarantineServer:
+      authentication: people
+      roles:
+        read: quarantine-reader
+        resolve: quarantine-resolver
+        bypass: quarantine-bypasser
+      pageSize: 100
+      maxPageSize: 1000
+```
+
+| Key | Description |
+|---|---|
+| `quarantineServer.authentication` | The provider of the `authentication` block that identifies the callers. |
+| `quarantineServer.roles.read` | The role that lists the quarantine and shows a record. |
+| `quarantineServer.roles.resolve` | The role that republishes, amends and purges a record. |
+| `quarantineServer.roles.bypass` | The role that lets a record through although a validator rejected it. |
+| `quarantineServer.pageSize` | Records per page when the caller does not say. 100 by default. |
+| `quarantineServer.maxPageSize` | Records a page can have at most. 1000 by default. |
+
+The routes are `GET /spool/quarantine?status=&limit=&cursor=`, `GET /spool/quarantine/{key}` and
+`POST /spool/quarantine/{key}/republish`, `/amend` (the amended payload as the body), `/bypass`
+(`{"reason": "..."}`) and `/purge`. Each resolution keeps who made it. The contract is
+`quarantine-api.yaml` in the janitor.
+
 ### Durations
 
 Every time in the descriptor is a duration, in ISO 8601 (`PT5S`, `P30D`) or in the short form: `100ms`, `5s`, `10m`,

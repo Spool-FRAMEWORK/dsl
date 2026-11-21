@@ -7,6 +7,11 @@ import software.spool.dsl.descriptors.infrastructure.InfrastructureKind;
 import software.spool.dsl.descriptors.module.ScheduleDescriptor;
 import software.spool.dsl.descriptors.module.SpoolModuleDescriptor;
 import software.spool.dsl.descriptors.module.janitor.JanitorDescriptor;
+import software.spool.dsl.descriptors.module.janitor.QuarantineServerDescriptor;
+import software.spool.dsl.providers.authentication.RequestAuthenticators;
+import software.spool.dsl.registry.ModuleProviderRegistry;
+import software.spool.janitor.api.quarantine.QuarantinePageSizes;
+import software.spool.janitor.api.quarantine.QuarantineRoles;
 import software.spool.dsl.providers.InfrastructurePluginFactory;
 import software.spool.dsl.providers.SpoolModuleProvider;
 import software.spool.janitor.api.builder.JanitorBuilderFactory;
@@ -19,6 +24,9 @@ import java.time.Duration;
 @SpoolPlugin(SpoolModuleProvider.class)
 public class JanitorSpoolModuleProvider implements SpoolModuleProvider {
     private static final Duration DEFAULT_ROUND_INTERVAL = Duration.ofSeconds(5);
+    private static final String QUARANTINE_SERVER = "quarantineServer";
+    private static final int DEFAULT_PAGE_SIZE = 100;
+    private static final int DEFAULT_MAX_PAGE_SIZE = 1000;
     private static final Duration LONGEST_INT_MILLIS = Duration.ofMillis(Integer.MAX_VALUE);
 
     @Override
@@ -60,7 +68,34 @@ public class JanitorSpoolModuleProvider implements SpoolModuleProvider {
         if (infrastructure.find(InfrastructureKind.DATA_LAKE).isPresent()) {
             builder.rewriteDataLakeWith(InfrastructurePluginFactory.dataLakeWriter(infrastructure));
         }
+        janitor.quarantineServer().ifPresent(server -> serveQuarantine(builder, janitor.id(), server,
+                configuration.get(ModuleProviderRegistry.AUTHENTICATION, RequestAuthenticators.class).orElseGet(RequestAuthenticators::none)));
         return builder.create();
+    }
+
+    private static void serveQuarantine(PollingJanitorBuilder builder, String id, QuarantineServerDescriptor server,
+                                        RequestAuthenticators authentication) {
+        try {
+            builder.serveQuarantineOverHttp(
+                    authentication.find(server.authentication(), QUARANTINE_SERVER + ".authentication"),
+                    new QuarantineRoles(server.readRole(), server.resolveRole(), server.bypassRole()),
+                    pageSizes(server));
+        } catch (InvalidDescriptorException e) {
+            throw e.inModule(id);
+        }
+    }
+
+    private static QuarantinePageSizes pageSizes(QuarantineServerDescriptor server) {
+        int byDefault = server.pageSize().orElse(DEFAULT_PAGE_SIZE);
+        int maximum = server.maxPageSize().orElse(Math.max(DEFAULT_MAX_PAGE_SIZE, byDefault));
+        if (byDefault < 1) {
+            throw new InvalidDescriptorException(QUARANTINE_SERVER + ".pageSize", "must be at least 1, got " + byDefault);
+        }
+        if (maximum < byDefault) {
+            throw new InvalidDescriptorException(QUARANTINE_SERVER + ".maxPageSize",
+                    "must be at least the pageSize (" + byDefault + "), got " + maximum);
+        }
+        return new QuarantinePageSizes(byDefault, maximum);
     }
 
     /** The janitor takes some times as an int of milliseconds; a longer one fails instead of wrapping around. */

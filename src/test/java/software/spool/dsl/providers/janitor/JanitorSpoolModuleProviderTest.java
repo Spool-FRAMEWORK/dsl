@@ -1,5 +1,6 @@
 package software.spool.dsl.providers.janitor;
 
+import software.spool.core.model.quarantine.Resolver;
 import software.spool.dsl.Pieces;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -44,7 +45,7 @@ class JanitorSpoolModuleProviderTest {
     void create_withEveryTime_buildsTheModule() {
         JanitorDescriptor janitor = new JanitorDescriptor("j1", Optional.of(new ScheduleDescriptor(Duration.ofSeconds(1))),
             Optional.of(Duration.ofSeconds(10)), Optional.of(Duration.ofDays(1)), Optional.of(Duration.ofDays(7)),
-            Optional.of(Duration.ofDays(90)), Optional.of(5));
+            Optional.of(Duration.ofDays(90)), Optional.of(5), Optional.empty());
 
         assertThat(provider.create(configurationOf(janitor))).isNotNull();
     }
@@ -57,7 +58,7 @@ class JanitorSpoolModuleProviderTest {
     @Test
     void create_withATtlLongerThanTheJanitorAccepts_namesTheKey() {
         JanitorDescriptor janitor = new JanitorDescriptor("j1", Optional.empty(), Optional.empty(),
-            Optional.of(Duration.ofDays(30)), Optional.empty(), Optional.empty(), Optional.empty());
+            Optional.of(Duration.ofDays(30)), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty());
 
         assertThatThrownBy(() -> provider.create(configurationOf(janitor)))
             .isInstanceOf(InvalidDescriptorException.class)
@@ -83,7 +84,7 @@ class JanitorSpoolModuleProviderTest {
             .with("infrastructure", infrastructure)
             .build());
 
-        assertThat(janitor.quarantinedEnvelopes().republish(List.of(IdempotencyKey.of("k1")))).containsExactly(IdempotencyKey.of("k1"));
+        assertThat(janitor.quarantinedEnvelopes().republish(List.of(IdempotencyKey.of("k1")), Resolver.identified("ana", "people"))).containsExactly(IdempotencyKey.of("k1"));
         assertThat(tmp.resolve("lake/bronze/source=boe/k1.json")).exists();
     }
 

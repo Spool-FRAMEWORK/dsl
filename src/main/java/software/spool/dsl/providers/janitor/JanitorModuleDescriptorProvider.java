@@ -3,6 +3,7 @@ package software.spool.dsl.providers.janitor;
 import software.spool.dsl.descriptors.module.ScheduleDescriptor;
 import software.spool.dsl.descriptors.module.SpoolModuleDescriptor;
 import software.spool.dsl.descriptors.module.janitor.JanitorDescriptor;
+import software.spool.dsl.descriptors.module.janitor.QuarantineServerDescriptor;
 import software.spool.dsl.providers.ModuleDescriptorProvider;
 import software.spool.dsl.reader.DescriptorReader;
 import software.spool.dsl.reader.ValueParsers;
@@ -33,7 +34,19 @@ public class JanitorModuleDescriptorProvider implements ModuleDescriptorProvider
                 configuration.optional("ttl", ValueParsers.DURATION),
                 configuration.optional("quarantineTtl", ValueParsers.DURATION),
                 configuration.optional("quarantineRetention", ValueParsers.DURATION),
-                configuration.optional("maxInboxUpdateAttempts", ValueParsers.INTEGER)
+                configuration.optional("maxInboxUpdateAttempts", ValueParsers.INTEGER),
+                janitor.value("quarantineServer").map(present -> quarantineServer(janitor.object("quarantineServer")))
         );
+    }
+
+    private static QuarantineServerDescriptor quarantineServer(DescriptorReader server) {
+        DescriptorReader roles = server.object("roles");
+        return new QuarantineServerDescriptor(
+                server.string("authentication"),
+                roles.string("read"),
+                roles.string("resolve"),
+                roles.string("bypass"),
+                server.optional("pageSize", ValueParsers.INTEGER),
+                server.optional("maxPageSize", ValueParsers.INTEGER));
     }
 }
