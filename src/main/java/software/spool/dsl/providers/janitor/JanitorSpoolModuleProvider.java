@@ -57,7 +57,7 @@ public class JanitorSpoolModuleProvider implements SpoolModuleProvider {
         janitor.quarantineRetention().ifPresent(retention -> builder.withMillisecondsQuarantineRetention(retention.toMillis()));
         janitor.maxInboxUpdateAttempts().ifPresent(builder::withMaxInboxUpdateAttempts);
         if (infrastructure.dataLake() != null) {
-            builder.rewriteBronzeIn(InfrastructurePluginFactory.bronzeRepository(infrastructure));
+            builder.rewriteBronzeIn(InfrastructurePluginFactory.bronzeWriter(infrastructure));
         }
         return builder.create();
     }
