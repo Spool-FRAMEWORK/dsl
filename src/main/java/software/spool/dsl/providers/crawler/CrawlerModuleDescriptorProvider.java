@@ -80,7 +80,8 @@ public class CrawlerModuleDescriptorProvider implements ModuleDescriptorProvider
     private static EventMappingDescriptor readEventMapping(DescriptorReader mapping) {
         return new EventMappingDescriptor(
                 mapping.required("namingConvention", ValueParsers.oneOf(NamingConvention.class)),
-                mapping.optional("domainMappingList", TEXTS).orElse(List.of()),
+                EventClasses.in(mapping.optional("eventPackage", ValueParsers.STRING).orElse(EventClasses.DEFAULT_PACKAGE))
+                        .resolve(mapping.path() + ".domainMappingList", mapping.optional("domainMappingList", TEXTS).orElse(List.of())),
                 mapping.optional("attributeList", TEXTS).orElse(List.of())
         );
     }

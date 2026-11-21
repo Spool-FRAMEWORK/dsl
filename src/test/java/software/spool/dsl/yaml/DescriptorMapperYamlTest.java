@@ -1,5 +1,6 @@
 package software.spool.dsl.yaml;
 
+import events.StreamedOrder;
 import org.junit.jupiter.api.Test;
 import software.spool.core.adapter.jackson.PayloadDeserializerFactory;
 import software.spool.core.port.serde.EnrichmentRule;
@@ -45,7 +46,7 @@ class DescriptorMapperYamlTest {
         assertThat(crawler.source().configuration()).containsEntry("sourceId", "synthea-api");
         assertThat(crawler.schedule()).contains(new ScheduleDescriptor(Duration.ofSeconds(5)));
         assertThat(crawler.eventMapping().namingConvention()).isEqualTo(NamingConvention.SNAKE_CASE);
-        assertThat(crawler.eventMapping().domainMappingList()).isEmpty();
+        assertThat(crawler.eventMapping().domainEvents()).isEmpty();
         assertThat(crawler.eventMapping().attributeList()).isEmpty();
 
         IngesterDescriptor ingester = (IngesterDescriptor) node.modules().get(1);
@@ -83,7 +84,7 @@ class DescriptorMapperYamlTest {
                         attributeList:
                           - value: patientId
                           - encounterId
-                        domainMappingList: [PatientEvent]
+                        domainMappingList: [StreamedOrder]
                 """;
 
         CrawlerDescriptor crawler = (CrawlerDescriptor) DescriptorMapper.map(read(yaml.getBytes(StandardCharsets.UTF_8)))
@@ -94,7 +95,7 @@ class DescriptorMapperYamlTest {
         assertThat(crawler.source().enrichment())
                 .containsExactly(new EnrichmentRule("a", "b"), new EnrichmentRule("c", "c"));
         assertThat(crawler.eventMapping().attributeList()).containsExactly("patientId", "encounterId");
-        assertThat(crawler.eventMapping().domainMappingList()).containsExactly("PatientEvent");
+        assertThat(crawler.eventMapping().domainEvents()).containsExactly(StreamedOrder.class);
     }
 
     @Test

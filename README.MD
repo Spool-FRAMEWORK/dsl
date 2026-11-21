@@ -217,6 +217,8 @@ crawler listens to it.
 | `source.type` | The source plugin: `HTTP` for `POLL`, `IN_MEMORY` for `STREAM`. |
 | `source.mediaType` | `JSON`, `JSON_ARRAY`, `JSON_OBJECT`, `EVENT_CLASS`, `EVENT_CLASS_ARRAY` or `PDF`. |
 | `eventMapping.namingConvention` | How field names are written in the events. |
+| `eventMapping.domainMappingList` | The domain events the crawler publishes, by the simple name of their class. Optional. |
+| `eventMapping.eventPackage` | The package of those classes. Optional; `events` when missing. |
 | `errorRouter` | Where the crawler reports what fails. Optional; `DEFAULT` when missing. |
 
 ---
