@@ -7,6 +7,8 @@ import software.spool.dsl.descriptors.infrastructure.InfrastructureComponentDesc
 import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
 import software.spool.dsl.descriptors.module.crawler.CrawlerDescriptor;
 import software.spool.dsl.descriptors.module.crawler.EventMappingDescriptor;
+import software.spool.core.utils.media.MediaTypes;
+import software.spool.dsl.descriptors.module.crawler.source.NormalizerDescriptor.Extended;
 import software.spool.dsl.descriptors.module.crawler.source.SourceDescriptor;
 
 import java.util.Arrays;
@@ -51,7 +53,7 @@ class ModuleProviderRegistryTest {
     }
 
     private static CrawlerDescriptor crawler(String type) {
-        SourceDescriptor source = new SourceDescriptor("HTTP", "s", Map.of(), "JSON_ARRAY", "", List.of());
+        SourceDescriptor source = new SourceDescriptor("HTTP", "s", Map.of(), Extended.named("JSON_ARRAY", "source.normalizer"), MediaTypes.JSON, "", List.of());
         EventMappingDescriptor mapping = new EventMappingDescriptor(NamingConvention.SNAKE_CASE, List.of(), List.of());
         return new CrawlerDescriptor(type, "c", source, mapping);
     }

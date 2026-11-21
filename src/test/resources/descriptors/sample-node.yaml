@@ -30,7 +30,8 @@ modules:
         configuration:
           sourceId: synthea-api
           url: "http://plytrox.com:8000/events?limit=5"
-        mediaType: JSON_ARRAY
+        normalizer: JSON_ARRAY
+        mediaType: JSON
         rootPath: events
       eventMapping:
         namingConvention: SNAKE_CASE

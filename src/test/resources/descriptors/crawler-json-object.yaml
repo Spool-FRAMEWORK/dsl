@@ -16,6 +16,7 @@ modules:
         configuration:
           sourceId: json-object-api
           url: "http://localhost:8000/event"
-        mediaType: JSON_OBJECT
+        normalizer: JSON_OBJECT
+        mediaType: JSON
       eventMapping:
         namingConvention: SNAKE_CASE

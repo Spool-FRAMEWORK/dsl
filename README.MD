@@ -121,7 +121,8 @@ modules:
         configuration:
           sourceId: my-source
           url: "https://api.example.com/data"
-        mediaType: JSON_ARRAY
+        normalizer: JSON_ARRAY
+        mediaType: JSON
       eventMapping:
         namingConvention: SNAKE_CASE
 
@@ -198,7 +199,8 @@ crawler listens to it.
       configuration:
         sourceId: my-source
         url: "https://api.example.com/data"
-      mediaType: JSON_ARRAY     # how the response is split into records
+      normalizer: JSON_ARRAY    # how the response is split into records
+      mediaType: JSON           # what the records hold
       rootPath: results         # dot-notation path to the records, optional
       enrichment:
         - source: entityName    # field copied into every record
@@ -215,11 +217,63 @@ crawler listens to it.
 |---|---|
 | `type` | `POLL` or `STREAM`. |
 | `source.type` | The source plugin: `HTTP` for `POLL`, `IN_MEMORY` for `STREAM`. |
-| `source.mediaType` | `JSON`, `JSON_ARRAY`, `JSON_OBJECT`, `EVENT_CLASS`, `EVENT_CLASS_ARRAY` or `PDF`. |
+| `source.normalizer` | The normalizer that turns what the source reads into records: `JSON`, `JSON_ARRAY`, `JSON_OBJECT`, `EVENT_CLASS`, `EVENT_CLASS_ARRAY` or `PDF`, or one composed from steps (see below). |
+| `source.mediaType` | The media type of the records, as an alias (`JSON`, `TEXT`, `PDF`, `PNG`, `JPEG`, `MP4`) or in full (`application/x-ndjson`). It only labels the records. |
 | `eventMapping.namingConvention` | How field names are written in the events. |
 | `eventMapping.domainMappingList` | The domain events the crawler publishes, by the simple name of their class. Optional. |
 | `eventMapping.eventPackage` | The package of those classes. Optional; `events` when missing. |
 | `errorRouter` | Where the crawler reports what fails. Optional; `DEFAULT` when missing. |
+
+### Composing a normalizer
+
+`JSON`, `JSON_ARRAY` and `JSON_OBJECT` publish their stages: `raw`, `deserialized`, `extracted`, `located`, `split` and `serialized`. A descriptor can add steps after a stage, replace the step that gives a stage, or replace every step between two stages. Replacements run first, then additions.
+
+```yaml
+- crawler:
+    type: POLL
+    id: boe-crawler
+    source:
+      type: HTTP
+      configuration:
+        sourceId: boe
+        url: "https://www.boe.es/datosabiertos/api/boe/sumario/20261121"
+      normalizer:
+        from: JSON_ARRAY
+        after:
+          deserialized: [BOE_SUMMARY]   # runs right after the payload is read as JSON
+      mediaType: JSON
+      rootPath: data.sumario.diario.0.items
+    eventMapping:
+      namingConvention: SNAKE_CASE
+```
+
+Replacing a step, or a stretch of steps:
+
+```yaml
+- crawler:
+    type: POLL
+    id: boe-crawler
+    source:
+      type: HTTP
+      configuration:
+        sourceId: boe
+        url: "https://www.boe.es/datosabiertos/api/boe/sumario/20261121"
+      normalizer:
+        from: JSON_ARRAY
+        replace:
+          - stage: deserialized              # the step that gives this stage
+            with: READ_XML
+          - between: [split, serialized]     # every step from split to serialized
+            with: [TO_CSV_LINE, TEXT_TO_BYTES]
+      mediaType: text/csv
+      rootPath: sumario.diario.items
+    eventMapping:
+      namingConvention: SNAKE_CASE
+```
+
+A normalizer can also be built only from steps, from the raw payload to the records: `normalizer: {steps: [LINES, TEXT_TO_BYTES]}`.
+
+A step is a class that implements `Step` from core, with a public constructor without arguments, annotated with `@NormalizerStep("NAME")` from the crawler. The crawler's annotation processor lists it at compile time, so it only has to be on the classpath. The node checks that every step takes what the step before it gives when it loads the descriptor, and logs the normalizer that results.
 
 ---
 

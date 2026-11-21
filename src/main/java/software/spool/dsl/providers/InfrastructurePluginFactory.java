@@ -11,7 +11,7 @@ import software.spool.core.port.inbox.InboxReader;
 import software.spool.core.port.inbox.InboxUpdater;
 import software.spool.crawler.api.port.InboxWriter;
 import software.spool.crawler.api.utils.CrawlerPorts;
-import software.spool.crawler.internal.utils.factory.Normalizer;
+import software.spool.crawler.api.normalizer.Normalizer;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureComponentDescriptor;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
 import software.spool.dsl.descriptors.module.crawler.source.SourceDescriptor;
@@ -24,7 +24,6 @@ import software.spool.infrastructure.spi.provider.inbox.InboxReaderProvider;
 import software.spool.infrastructure.spi.provider.inbox.InboxUpdaterProvider;
 import software.spool.infrastructure.spi.provider.inbox.InboxWriterProvider;
 import software.spool.infrastructure.spi.provider.quarantine.QuarantineRepositoryProvider;
-import software.spool.infrastructure.spi.provider.serde.NormalizerProvider;
 import software.spool.core.port.datalake.DataLakeWriter;
 
 /**
@@ -100,11 +99,10 @@ public final class InfrastructurePluginFactory {
     }
 
     public static Normalizer<?> normalizer(SourceDescriptor source) {
-        return KnownPlugins.get(NormalizerProvider.class, source.mediaType(), "_NORMALIZER", "source.mediaType", "media type")
-                .create(PluginConfiguration.builder()
-                        .with("rules", new String(RecordSerializerFactory.record().serialize(source.enrichment())))
-                        .with("rootPath", source.rootPath())
-                        .build());
+        return NormalizerComposer.withDeclaredSteps().compose(source.normalizer(), PluginConfiguration.builder()
+                .with("rules", new String(RecordSerializerFactory.record().serialize(source.enrichment())))
+                .with("rootPath", source.rootPath())
+                .build());
     }
 
     private static InfrastructureComponentDescriptor required(InfrastructureComponentDescriptor component, String key) {

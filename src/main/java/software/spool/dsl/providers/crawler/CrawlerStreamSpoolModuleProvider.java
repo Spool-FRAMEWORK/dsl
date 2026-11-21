@@ -1,10 +1,9 @@
 package software.spool.dsl.providers.crawler;
 
 import software.spool.core.model.spool.SpoolModule;
-import software.spool.core.utils.media.MediaTypeResolver;
 import software.spool.crawler.api.builder.CrawlerBuilderFactory;
 import software.spool.crawler.api.port.source.StreamSource;
-import software.spool.crawler.internal.utils.factory.Normalizer;
+import software.spool.crawler.api.normalizer.Normalizer;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
 import software.spool.dsl.descriptors.module.SpoolModuleDescriptor;
 import software.spool.dsl.descriptors.module.crawler.CrawlerDescriptor;
@@ -48,7 +47,7 @@ public class CrawlerStreamSpoolModuleProvider implements SpoolModuleProvider {
                     .ports(InfrastructurePluginFactory.crawlerPorts(infrastructure))
                     .enrichRules(source.enrichment())
                     .rootPath(source.rootPath())
-                    .mediaType(MediaTypeResolver.resolve(source.mediaType()))
+                    .mediaType(source.mediaType())
                     .and()
                 .mapping()
                     .convention(crawler.eventMapping().namingConvention())

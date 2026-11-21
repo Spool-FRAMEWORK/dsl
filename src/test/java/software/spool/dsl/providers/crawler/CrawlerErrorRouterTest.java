@@ -12,6 +12,8 @@ import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
 import software.spool.dsl.descriptors.module.crawler.CrawlerDescriptor;
 import software.spool.dsl.descriptors.module.crawler.ErrorRouterDescriptor;
 import software.spool.dsl.descriptors.module.crawler.EventMappingDescriptor;
+import software.spool.core.utils.media.MediaTypes;
+import software.spool.dsl.descriptors.module.crawler.source.NormalizerDescriptor.Extended;
 import software.spool.dsl.descriptors.module.crawler.source.SourceDescriptor;
 import software.spool.infrastructure.spi.provider.PluginConfiguration;
 
@@ -79,7 +81,7 @@ class CrawlerErrorRouterTest {
         Map<String, String> sourceConfiguration = crawlerType.equals("POLL")
             ? Map.of("sourceId", "s", "url", "http://localhost:1/events")
             : Map.of("sourceId", "s", "eventClassName", "StreamedOrder");
-        SourceDescriptor source = new SourceDescriptor(sourceType, "s", sourceConfiguration, "JSON_ARRAY", "", List.of());
+        SourceDescriptor source = new SourceDescriptor(sourceType, "s", sourceConfiguration, Extended.named("JSON_ARRAY", "source.normalizer"), MediaTypes.JSON, "", List.of());
         EventMappingDescriptor mapping = new EventMappingDescriptor(NamingConvention.SNAKE_CASE, List.of(), List.of());
         InfrastructureComponentDescriptor bus = new InfrastructureComponentDescriptor("IN_MEMORY", Map.of());
         InfrastructureComponentDescriptor inbox = new InfrastructureComponentDescriptor("FILE_SYSTEM", Map.of("path", tmp.toString()));

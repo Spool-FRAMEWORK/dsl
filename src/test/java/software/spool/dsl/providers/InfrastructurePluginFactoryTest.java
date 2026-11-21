@@ -2,10 +2,12 @@ package software.spool.dsl.providers;
 
 import org.junit.jupiter.api.Test;
 import software.spool.core.port.serde.EnrichmentRule;
-import software.spool.crawler.internal.utils.factory.Normalizer;
+import software.spool.core.utils.media.MediaTypes;
+import software.spool.crawler.api.normalizer.Normalizer;
 import software.spool.dsl.InvalidDescriptorException;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureComponentDescriptor;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
+import software.spool.dsl.descriptors.module.crawler.source.NormalizerDescriptor.Extended;
 import software.spool.dsl.descriptors.module.crawler.source.SourceDescriptor;
 
 import java.nio.charset.StandardCharsets;
@@ -19,8 +21,9 @@ class InfrastructurePluginFactoryTest {
 
     private static final InfrastructureComponentDescriptor BUS = new InfrastructureComponentDescriptor("IN_MEMORY", Map.of());
 
-    private static SourceDescriptor source(String mediaType) {
-        return new SourceDescriptor("HTTP", "s", Map.of(), mediaType, "", List.of());
+    private static SourceDescriptor source(String normalizer) {
+        return new SourceDescriptor("HTTP", "s", Map.of(), Extended.named(normalizer, "source.normalizer"),
+            MediaTypes.JSON, "", List.of());
     }
 
     @SuppressWarnings("unchecked")
@@ -76,7 +79,7 @@ class InfrastructurePluginFactoryTest {
     }
 
     @Test
-    void normalizer_withAKnownMediaType_returnsIt() {
+    void normalizer_withAKnownName_returnsIt() {
         assertThat(InfrastructurePluginFactory.normalizer(source("JSON_ARRAY"))).isNotNull();
     }
 
@@ -93,7 +96,8 @@ class InfrastructurePluginFactoryTest {
 
     @Test
     void normalizer_withAJsonObjectAndARootPathAndARule_keepsTheObjectAndAddsTheField() {
-        SourceDescriptor source = new SourceDescriptor("HTTP", "s", Map.of(), "JSON_OBJECT", "data",
+        SourceDescriptor source = new SourceDescriptor("HTTP", "s", Map.of(),
+            Extended.named("JSON_OBJECT", "source.normalizer"), MediaTypes.JSON, "data",
             List.of(new EnrichmentRule("meta.origin", "origin")));
         Normalizer<byte[]> normalizer = bytesNormalizer(source);
 
@@ -105,10 +109,10 @@ class InfrastructurePluginFactoryTest {
     }
 
     @Test
-    void normalizer_withAnUnknownMediaType_namesTheKeyAndTheKnownOnes() {
+    void normalizer_withAnUnknownName_namesTheKeyAndTheKnownOnes() {
         assertThatThrownBy(() -> InfrastructurePluginFactory.normalizer(source("PNG")))
             .isInstanceOf(InvalidDescriptorException.class)
-            .hasMessageStartingWith("source.mediaType 'PNG' is not a known media type. Known: ")
+            .hasMessageStartingWith("source.normalizer 'PNG' is not a known normalizer. Known: ")
             .hasMessageContaining("JSON_ARRAY")
             .hasMessageNotContaining("_NORMALIZER");
     }

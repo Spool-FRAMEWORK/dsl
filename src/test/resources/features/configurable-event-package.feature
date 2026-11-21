@@ -14,7 +14,7 @@ Feature: The descriptor says in which package the event classes of a crawler are
         - crawler:
             type: POLL
             id: crawler
-            source: {type: HTTP, mediaType: JSON_OBJECT, configuration: {sourceId: orders, url: "http://localhost/event"}}
+            source: {type: HTTP, normalizer: JSON_OBJECT, mediaType: JSON, configuration: {sourceId: orders, url: "http://localhost/event"}}
             eventMapping:
               namingConvention: SNAKE_CASE
               domainMappingList: [StreamedOrder]
@@ -33,7 +33,7 @@ Feature: The descriptor says in which package the event classes of a crawler are
         - crawler:
             type: POLL
             id: crawler
-            source: {type: HTTP, mediaType: JSON_OBJECT, configuration: {sourceId: orders, url: "http://localhost/event"}}
+            source: {type: HTTP, normalizer: JSON_OBJECT, mediaType: JSON, configuration: {sourceId: orders, url: "http://localhost/event"}}
             eventMapping:
               namingConvention: SNAKE_CASE
               eventPackage: software.spool.dsl.acceptance.orders
@@ -53,7 +53,7 @@ Feature: The descriptor says in which package the event classes of a crawler are
         - crawler:
             type: POLL
             id: crawler
-            source: {type: HTTP, mediaType: JSON_OBJECT, configuration: {sourceId: orders, url: "http://localhost/event"}}
+            source: {type: HTTP, normalizer: JSON_OBJECT, mediaType: JSON, configuration: {sourceId: orders, url: "http://localhost/event"}}
             eventMapping:
               namingConvention: SNAKE_CASE
               eventPackage: software.spool.dsl.acceptance.orders
@@ -74,7 +74,7 @@ Feature: The descriptor says in which package the event classes of a crawler are
         - crawler:
             type: POLL
             id: crawler
-            source: {type: HTTP, mediaType: JSON_OBJECT, configuration: {sourceId: orders, url: "http://localhost/event"}}
+            source: {type: HTTP, normalizer: JSON_OBJECT, mediaType: JSON, configuration: {sourceId: orders, url: "http://localhost/event"}}
             eventMapping:
               namingConvention: SNAKE_CASE
               eventPackage: software.spool.dsl.acceptance.orders

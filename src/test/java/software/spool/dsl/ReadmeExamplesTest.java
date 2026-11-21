@@ -8,6 +8,7 @@ import software.spool.dsl.descriptors.SpoolNodeDescriptor;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureComponentDescriptor;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
 import software.spool.dsl.descriptors.module.crawler.CrawlerDescriptor;
+import software.spool.dsl.descriptors.module.crawler.source.NormalizerDescriptor.Extended;
 import software.spool.dsl.providers.KnownPlugins;
 import software.spool.infrastructure.spi.Plugin;
 import software.spool.infrastructure.spi.provider.ErrorRouterProvider;
@@ -124,7 +125,9 @@ class ReadmeExamplesTest {
         } else {
             KnownPlugins.get(PollSourceProvider.class, crawler.source().type(), "source.type", "poll source");
         }
-        KnownPlugins.get(NormalizerProvider.class, crawler.source().mediaType(), "_NORMALIZER", "source.mediaType", "media type");
+        if (crawler.source().normalizer() instanceof Extended extended) {
+            KnownPlugins.get(NormalizerProvider.class, extended.from().name(), "_NORMALIZER", extended.from().path(), "normalizer");
+        }
         if (crawler.errorRouter() != null) {
             KnownPlugins.get(ErrorRouterProvider.class, crawler.errorRouter().type(), "errorRouter.type", "error router");
         }

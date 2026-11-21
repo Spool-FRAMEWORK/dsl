@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import software.spool.core.adapter.jackson.PayloadDeserializerFactory;
 import software.spool.core.port.serde.EnrichmentRule;
 import software.spool.core.port.serde.NamingConvention;
+import software.spool.core.utils.media.MediaTypes;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
 import software.spool.dsl.InvalidDescriptorException;
 import software.spool.dsl.descriptors.SpoolNodeDescriptor;
@@ -41,7 +42,7 @@ class DescriptorMapperYamlTest {
         assertThat(crawler.type()).isEqualTo("POLL");
         assertThat(crawler.id()).isEqualTo("synthea-crawler");
         assertThat(crawler.source().type()).isEqualTo("HTTP");
-        assertThat(crawler.source().mediaType()).isEqualTo("JSON_ARRAY");
+        assertThat(crawler.source().mediaType()).isEqualTo(MediaTypes.JSON);
         assertThat(crawler.source().rootPath()).isEqualTo("events");
         assertThat(crawler.source().configuration()).containsEntry("sourceId", "synthea-api");
         assertThat(crawler.schedule()).contains(new ScheduleDescriptor(Duration.ofSeconds(5)));
@@ -74,7 +75,8 @@ class DescriptorMapperYamlTest {
                       id: c1
                       source:
                         type: KAFKA
-                        mediaType: JSON_OBJECT
+                        normalizer: JSON_OBJECT
+                        mediaType: JSON
                         enrichment:
                           - source: a
                             target: b

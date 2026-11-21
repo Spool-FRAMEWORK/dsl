@@ -9,6 +9,8 @@ import software.spool.dsl.descriptors.infrastructure.InfrastructureComponentDesc
 import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
 import software.spool.dsl.descriptors.module.crawler.CrawlerDescriptor;
 import software.spool.dsl.descriptors.module.crawler.EventMappingDescriptor;
+import software.spool.core.utils.media.MediaTypes;
+import software.spool.dsl.descriptors.module.crawler.source.NormalizerDescriptor.Extended;
 import software.spool.dsl.descriptors.module.crawler.source.SourceDescriptor;
 
 import java.util.List;
@@ -41,7 +43,7 @@ class CrawlerSourceTypesTest {
     }
 
     private static SpoolNodeDescriptor node(String crawlerType, String sourceType) {
-        SourceDescriptor source = new SourceDescriptor(sourceType, "s", Map.of(), "JSON_ARRAY", "", List.of());
+        SourceDescriptor source = new SourceDescriptor(sourceType, "s", Map.of(), Extended.named("JSON_ARRAY", "source.normalizer"), MediaTypes.JSON, "", List.of());
         EventMappingDescriptor mapping = new EventMappingDescriptor(NamingConvention.SNAKE_CASE, List.of(), List.of());
         InfrastructureDescriptor infra = new InfrastructureDescriptor(null, BUS, BUS, BUS);
         return new SpoolNodeDescriptor(infra, List.of(new CrawlerDescriptor(crawlerType, "c", source, mapping)));

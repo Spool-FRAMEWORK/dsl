@@ -81,7 +81,7 @@ Feature: Times in the descriptor are readable durations
             type: POLL
             id: crawler
             schedule: {every: 2m}
-            source: {type: HTTP, mediaType: JSON_OBJECT, configuration: {sourceId: durations, url: "http://localhost/event"}}
+            source: {type: HTTP, normalizer: JSON_OBJECT, mediaType: JSON, configuration: {sourceId: durations, url: "http://localhost/event"}}
             eventMapping: {namingConvention: SNAKE_CASE}
       """
     When the descriptor is loaded

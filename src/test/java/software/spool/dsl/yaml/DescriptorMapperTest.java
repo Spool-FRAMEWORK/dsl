@@ -218,7 +218,7 @@ class DescriptorMapperTest {
 
     /** A crawler with everything it needs except the given event mapping. */
     private static Map<String, Object> crawler(Map<String, Object> eventMapping) {
-        Map<String, Object> source = new HashMap<>(Map.of("type", "HTTP", "mediaType", "JSON_ARRAY"));
+        Map<String, Object> source = new HashMap<>(Map.of("type", "HTTP", "normalizer", "JSON_ARRAY", "mediaType", "JSON"));
         return new HashMap<>(Map.of("type", "POLL", "id", "c", "source", source, "eventMapping", eventMapping));
     }
 
