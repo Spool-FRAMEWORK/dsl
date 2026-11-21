@@ -50,9 +50,7 @@ class SpoolNodeDSLTest {
 
     @Test
     void fromDescriptor_emptyModules_returnsNode() {
-        InfrastructureComponentDescriptor component = new InfrastructureComponentDescriptor("in-memory", Map.of());
-        InfrastructureDescriptor infra = new InfrastructureDescriptor(null, component, component, component);
-        SpoolNodeDescriptor descriptor = new SpoolNodeDescriptor(infra, List.of());
+        SpoolNodeDescriptor descriptor = Pieces.node(List.of(), Pieces.eventBus("in-memory"));
 
         SpoolNode node = SpoolNodeDSL.fromDescriptor(descriptor);
 
@@ -61,26 +59,19 @@ class SpoolNodeDSLTest {
 
     @Test
     void fromDescriptor_ingesterWithoutDataLake_saysWhichModuleNeedsIt() {
-        InfrastructureComponentDescriptor bus = new InfrastructureComponentDescriptor("IN_MEMORY", Map.of());
-        InfrastructureDescriptor infra = new InfrastructureDescriptor(null, bus, bus, null);
-        SpoolNodeDescriptor descriptor = new SpoolNodeDescriptor(infra,
-            List.of(IngesterDescriptor.withDefaults("REACTIVE", "synthea-ingester")));
+        SpoolNodeDescriptor descriptor = Pieces.node(List.of(IngesterDescriptor.withDefaults("REACTIVE", "synthea-ingester")),
+            Pieces.eventBus("IN_MEMORY"), Pieces.inbox("IN_MEMORY", Map.of()));
 
         assertThatThrownBy(() -> SpoolNodeDSL.fromDescriptor(descriptor))
             .isInstanceOf(InvalidDescriptorException.class)
-            .hasMessage("module 'synthea-ingester': infrastructure.dataLake is required");
+            .hasMessage("module 'synthea-ingester': the module needs a DATA_LAKE, and infrastructure declares none");
     }
 
     @Test
     void fromDescriptor_ingesterWithoutQuarantine_buildsTheNode() {
-        InfrastructureComponentDescriptor bus = new InfrastructureComponentDescriptor("IN_MEMORY", Map.of());
-        InfrastructureComponentDescriptor inbox = new InfrastructureComponentDescriptor("FILE_SYSTEM",
-            Map.of("path", "target/spool-test/inbox"));
-        InfrastructureComponentDescriptor lake = new InfrastructureComponentDescriptor("FILE_SYSTEM",
-            Map.of("path", "target/spool-test/datalake"));
-        InfrastructureDescriptor infra = new InfrastructureDescriptor(null, bus, inbox, lake);
-        SpoolNodeDescriptor descriptor = new SpoolNodeDescriptor(infra,
-            List.of(IngesterDescriptor.withDefaults("REACTIVE", "synthea-ingester")));
+        SpoolNodeDescriptor descriptor = Pieces.node(List.of(IngesterDescriptor.withDefaults("REACTIVE", "synthea-ingester")),
+            Pieces.eventBus("IN_MEMORY"), Pieces.inbox("FILE_SYSTEM", Map.of("path", "target/spool-test/inbox")),
+            Pieces.dataLake("FILE_SYSTEM", Map.of("path", "target/spool-test/datalake")));
 
         SpoolNode node = SpoolNodeDSL.fromDescriptor(descriptor);
 
@@ -89,26 +80,19 @@ class SpoolNodeDSLTest {
 
     @Test
     void fromDescriptor_janitorWithoutQuarantineRepository_saysWhichModuleNeedsIt() {
-        InfrastructureComponentDescriptor bus = new InfrastructureComponentDescriptor("IN_MEMORY", Map.of());
-        InfrastructureComponentDescriptor inbox = new InfrastructureComponentDescriptor("FILE_SYSTEM",
-            Map.of("path", "target/spool-test/inbox"));
-        InfrastructureDescriptor infra = new InfrastructureDescriptor(null, bus, inbox, null);
-        SpoolNodeDescriptor descriptor = new SpoolNodeDescriptor(infra,
-            List.of(JanitorDescriptor.withDefaults("synthea-janitor")));
+        SpoolNodeDescriptor descriptor = Pieces.node(List.of(JanitorDescriptor.withDefaults("synthea-janitor")),
+            Pieces.eventBus("IN_MEMORY"), Pieces.inbox("FILE_SYSTEM", Map.of("path", "target/spool-test/inbox")));
 
         assertThatThrownBy(() -> SpoolNodeDSL.fromDescriptor(descriptor))
             .isInstanceOf(InvalidDescriptorException.class)
-            .hasMessage("module 'synthea-janitor': infrastructure.quarantineRepository is required");
+            .hasMessage("module 'synthea-janitor': the module needs a QUARANTINE_REPOSITORY, and infrastructure declares none");
     }
 
     @Test
     void fromDescriptor_s3DataLakeWithHalfTheCredentials_saysWhichKeyIsMissing() {
-        InfrastructureComponentDescriptor bus = new InfrastructureComponentDescriptor("IN_MEMORY", Map.of());
-        InfrastructureComponentDescriptor lake = new InfrastructureComponentDescriptor("S3", Map.of(
-            "region", "auto", "bucket", "spool", "endpoint", "http://localhost:9000", "accessKeyEnv", "R2_ACCESS_KEY"));
-        InfrastructureDescriptor infra = new InfrastructureDescriptor(null, bus, bus, lake);
-        SpoolNodeDescriptor descriptor = new SpoolNodeDescriptor(infra,
-            List.of(IngesterDescriptor.withDefaults("REACTIVE", "synthea-ingester")));
+        SpoolNodeDescriptor descriptor = Pieces.node(List.of(IngesterDescriptor.withDefaults("REACTIVE", "synthea-ingester")),
+            Pieces.eventBus("IN_MEMORY"), Pieces.inbox("IN_MEMORY", Map.of()), Pieces.dataLake("S3", Map.of(
+                "region", "auto", "bucket", "spool", "endpoint", "http://localhost:9000", "accessKeyEnv", "R2_ACCESS_KEY")));
 
         assertThatThrownBy(() -> SpoolNodeDSL.fromDescriptor(descriptor))
             .isInstanceOf(IllegalArgumentException.class)

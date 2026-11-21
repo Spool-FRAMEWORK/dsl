@@ -6,11 +6,10 @@ import org.junit.jupiter.api.TestFactory;
 import org.junit.jupiter.api.io.TempDir;
 import software.spool.dsl.descriptors.SpoolNodeDescriptor;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureComponentDescriptor;
-import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
+import software.spool.dsl.descriptors.infrastructure.InfrastructureKind;
 import software.spool.dsl.descriptors.module.crawler.CrawlerDescriptor;
 import software.spool.dsl.descriptors.module.crawler.source.NormalizerDescriptor.Extended;
 import software.spool.dsl.providers.KnownPlugins;
-import software.spool.infrastructure.spi.Plugin;
 import software.spool.infrastructure.spi.provider.ErrorRouterProvider;
 import software.spool.infrastructure.spi.provider.PollSourceProvider;
 import software.spool.infrastructure.spi.provider.StreamSourceProvider;
@@ -71,27 +70,19 @@ class ReadmeExamplesTest {
     @Test
     void everyTypeOfTheInfrastructureTableIsARegisteredPlugin() throws IOException {
         String table = Files.readString(README).split("## Infrastructure Options")[1].split("\\R\\R")[1];
-        String component = "";
+        String kind = "";
         for (String row : table.lines().skip(2).toList()) {
             Matcher cells = TABLE_ROW.matcher(row);
             assertThat(cells.matches()).as("row of the infrastructure table: " + row).isTrue();
-            component = cells.group(1).isBlank() ? component : cells.group(1).replace("`", "").strip();
+            kind = cells.group(1).isBlank() ? kind : cells.group(1).replace("`", "").strip();
             String type = cells.group(2).replace("`", "").strip();
-            InfrastructureComponentDescriptor declared = new InfrastructureComponentDescriptor(type, Map.of());
-            switch (component) {
-                case "eventBus" -> exists(EventBusProvider.class, declared, component);
-                case "inbox" -> exists(InboxWriterProvider.class, declared, component);
-                case "dataLake" -> exists(DataLakeWriterProvider.class, declared, component);
-                case "dataMart" -> exists(DataMartWriterProvider.class, declared, component);
-                case "quarantineRepository" -> exists(QuarantineRepositoryProvider.class, declared, component);
-                default -> throw new AssertionError("unknown component in the infrastructure table: " + component);
-            }
+            exists(new InfrastructureComponentDescriptor("table", InfrastructureKind.valueOf(kind), type, Map.of()));
         }
     }
 
     private static String asDescriptor(String yaml) {
         if (yaml.startsWith("- ")) {
-            return "infrastructure:\n  eventBus: {type: IN_MEMORY}\nmodules:\n" + yaml.indent(2);
+            return "infrastructure:\n  eventBus: {kind: EVENT_BUS, type: IN_MEMORY}\nmodules:\n" + yaml.indent(2);
         }
         return Pattern.compile("^modules:", Pattern.MULTILINE).matcher(yaml).find() ? yaml : yaml + "modules: []\n";
     }
@@ -110,12 +101,7 @@ class ReadmeExamplesTest {
     }
 
     private static void assertPluginsExist(SpoolNodeDescriptor node) {
-        InfrastructureDescriptor infrastructure = node.infrastructure();
-        exists(EventBusProvider.class, infrastructure.eventBus(), "infrastructure.eventBus");
-        exists(InboxWriterProvider.class, infrastructure.inbox(), "infrastructure.inbox");
-        exists(DataLakeWriterProvider.class, infrastructure.dataLake(), "infrastructure.dataLake");
-        exists(QuarantineRepositoryProvider.class, infrastructure.quarantineRepository(), "infrastructure.quarantineRepository");
-        exists(DataMartWriterProvider.class, infrastructure.dataMart(), "infrastructure.dataMart");
+        node.infrastructure().pieces().forEach(ReadmeExamplesTest::exists);
         node.authentication().forEach((name, provider) ->
                 KnownPlugins.get(RequestAuthenticatorProvider.class, provider.type(), "authentication." + name, "authentication"));
         node.modules().stream().filter(CrawlerDescriptor.class::isInstance).map(CrawlerDescriptor.class::cast)
@@ -136,8 +122,14 @@ class ReadmeExamplesTest {
         }
     }
 
-    private static <T extends Plugin<R>, R> void exists(Class<T> type, InfrastructureComponentDescriptor component,
-                                                        String path) {
-        if (component != null) KnownPlugins.get(type, component.type(), path, path);
+    private static void exists(InfrastructureComponentDescriptor piece) {
+        String path = piece.path() + ".type";
+        switch (piece.kind()) {
+            case EVENT_BUS -> KnownPlugins.get(EventBusProvider.class, piece.type(), path, "event bus");
+            case INBOX -> KnownPlugins.get(InboxWriterProvider.class, piece.type(), path, "inbox");
+            case DATA_LAKE -> KnownPlugins.get(DataLakeWriterProvider.class, piece.type(), path, "data lake");
+            case DATA_MART -> KnownPlugins.get(DataMartWriterProvider.class, piece.type(), path, "data mart");
+            case QUARANTINE_REPOSITORY -> KnownPlugins.get(QuarantineRepositoryProvider.class, piece.type(), path, "quarantine repository");
+        }
     }
 }

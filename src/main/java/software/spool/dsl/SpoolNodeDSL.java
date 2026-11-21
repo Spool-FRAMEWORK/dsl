@@ -39,8 +39,8 @@ public abstract class SpoolNodeDSL {
     public static SpoolNode fromDescriptor(SpoolNodeDescriptor descriptor) {
         RequestAuthenticators authentication = RequestAuthenticators.from(descriptor.authentication());
         SpoolNode node = SpoolNode.create(new OpenTelemetryMetricsRegistry());
-        descriptor.modules().stream()
-                .map(m -> ModuleProviderRegistry.build(m, descriptor.infrastructure(), authentication))
+        descriptor.declaredModules().stream()
+                .map(module -> ModuleProviderRegistry.build(module.descriptor(), descriptor.infrastructureOf(module), authentication))
                 .forEach(node::register);
         return node;
     }

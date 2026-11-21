@@ -8,10 +8,10 @@ Feature: Times in the descriptor are readable durations
     Given the descriptor:
       """
       infrastructure:
-        eventBus: {type: IN_MEMORY}
-        inbox: {type: FILE_SYSTEM, configuration: {path: target/spool-test/durations/inbox}}
-        dataLake: {type: FILE_SYSTEM, configuration: {path: target/spool-test/durations/lake}}
-        quarantineRepository: {type: FILE_SYSTEM, configuration: {path: target/spool-test/durations/quarantine}}
+        eventBus: {kind: EVENT_BUS, type: IN_MEMORY}
+        inbox: {kind: INBOX, type: FILE_SYSTEM, configuration: {path: target/spool-test/durations/inbox}}
+        dataLake: {kind: DATA_LAKE, type: FILE_SYSTEM, configuration: {path: target/spool-test/durations/lake}}
+        quarantineRepository: {kind: QUARANTINE_REPOSITORY, type: FILE_SYSTEM, configuration: {path: target/spool-test/durations/quarantine}}
       modules:
         - janitor:
             id: janitor
@@ -35,10 +35,10 @@ Feature: Times in the descriptor are readable durations
     Given the descriptor:
       """
       infrastructure:
-        eventBus: {type: IN_MEMORY}
-        inbox: {type: FILE_SYSTEM, configuration: {path: target/spool-test/durations/inbox}}
-        dataLake: {type: FILE_SYSTEM, configuration: {path: target/spool-test/durations/lake}}
-        quarantineRepository: {type: FILE_SYSTEM, configuration: {path: target/spool-test/durations/quarantine}}
+        eventBus: {kind: EVENT_BUS, type: IN_MEMORY}
+        inbox: {kind: INBOX, type: FILE_SYSTEM, configuration: {path: target/spool-test/durations/inbox}}
+        dataLake: {kind: DATA_LAKE, type: FILE_SYSTEM, configuration: {path: target/spool-test/durations/lake}}
+        quarantineRepository: {kind: QUARANTINE_REPOSITORY, type: FILE_SYSTEM, configuration: {path: target/spool-test/durations/quarantine}}
       modules:
         - janitor:
             id: janitor
@@ -54,10 +54,10 @@ Feature: Times in the descriptor are readable durations
     Given the descriptor:
       """
       infrastructure:
-        eventBus: {type: IN_MEMORY}
-        inbox: {type: FILE_SYSTEM, configuration: {path: target/spool-test/durations/inbox}}
-        dataLake: {type: FILE_SYSTEM, configuration: {path: target/spool-test/durations/lake}}
-        quarantineRepository: {type: FILE_SYSTEM, configuration: {path: target/spool-test/durations/quarantine}}
+        eventBus: {kind: EVENT_BUS, type: IN_MEMORY}
+        inbox: {kind: INBOX, type: FILE_SYSTEM, configuration: {path: target/spool-test/durations/inbox}}
+        dataLake: {kind: DATA_LAKE, type: FILE_SYSTEM, configuration: {path: target/spool-test/durations/lake}}
+        quarantineRepository: {kind: QUARANTINE_REPOSITORY, type: FILE_SYSTEM, configuration: {path: target/spool-test/durations/quarantine}}
       modules:
         - ingester:
             id: ingester
@@ -72,10 +72,10 @@ Feature: Times in the descriptor are readable durations
     Given the descriptor:
       """
       infrastructure:
-        eventBus: {type: IN_MEMORY}
-        inbox: {type: FILE_SYSTEM, configuration: {path: target/spool-test/durations/inbox}}
-        dataLake: {type: FILE_SYSTEM, configuration: {path: target/spool-test/durations/lake}}
-        quarantineRepository: {type: FILE_SYSTEM, configuration: {path: target/spool-test/durations/quarantine}}
+        eventBus: {kind: EVENT_BUS, type: IN_MEMORY}
+        inbox: {kind: INBOX, type: FILE_SYSTEM, configuration: {path: target/spool-test/durations/inbox}}
+        dataLake: {kind: DATA_LAKE, type: FILE_SYSTEM, configuration: {path: target/spool-test/durations/lake}}
+        quarantineRepository: {kind: QUARANTINE_REPOSITORY, type: FILE_SYSTEM, configuration: {path: target/spool-test/durations/quarantine}}
       modules:
         - crawler:
             type: POLL
@@ -92,10 +92,10 @@ Feature: Times in the descriptor are readable durations
     Given the descriptor:
       """
       infrastructure:
-        eventBus: {type: IN_MEMORY}
-        inbox: {type: FILE_SYSTEM, configuration: {path: target/spool-test/durations/inbox}}
-        dataLake: {type: FILE_SYSTEM, configuration: {path: target/spool-test/durations/lake}}
-        quarantineRepository: {type: FILE_SYSTEM, configuration: {path: target/spool-test/durations/quarantine}}
+        eventBus: {kind: EVENT_BUS, type: IN_MEMORY}
+        inbox: {kind: INBOX, type: FILE_SYSTEM, configuration: {path: target/spool-test/durations/inbox}}
+        dataLake: {kind: DATA_LAKE, type: FILE_SYSTEM, configuration: {path: target/spool-test/durations/lake}}
+        quarantineRepository: {kind: QUARANTINE_REPOSITORY, type: FILE_SYSTEM, configuration: {path: target/spool-test/durations/quarantine}}
       modules:
         - janitor:
             id: janitor
@@ -110,10 +110,10 @@ Feature: Times in the descriptor are readable durations
     Given the descriptor:
       """
       infrastructure:
-        eventBus: {type: IN_MEMORY}
-        inbox: {type: FILE_SYSTEM, configuration: {path: target/spool-test/durations/inbox}}
-        dataLake: {type: FILE_SYSTEM, configuration: {path: target/spool-test/durations/lake}}
-        quarantineRepository: {type: FILE_SYSTEM, configuration: {path: target/spool-test/durations/quarantine}}
+        eventBus: {kind: EVENT_BUS, type: IN_MEMORY}
+        inbox: {kind: INBOX, type: FILE_SYSTEM, configuration: {path: target/spool-test/durations/inbox}}
+        dataLake: {kind: DATA_LAKE, type: FILE_SYSTEM, configuration: {path: target/spool-test/durations/lake}}
+        quarantineRepository: {kind: QUARANTINE_REPOSITORY, type: FILE_SYSTEM, configuration: {path: target/spool-test/durations/quarantine}}
       modules:
         - janitor:
             id: janitor

@@ -1,5 +1,6 @@
 package software.spool.dsl.providers.janitor;
 
+import software.spool.dsl.Pieces;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import software.spool.core.model.EnvelopeStatus;
@@ -34,12 +35,10 @@ class JanitorSpoolModuleProviderTest {
 
     private final JanitorSpoolModuleProvider provider = new JanitorSpoolModuleProvider();
 
-    private static final InfrastructureDescriptor INFRASTRUCTURE = new InfrastructureDescriptor(
-        null,
-        new InfrastructureComponentDescriptor("IN_MEMORY", Map.of()),
-        new InfrastructureComponentDescriptor("FILE_SYSTEM", Map.of("path", "target/spool-test/inbox")),
-        null,
-        new InfrastructureComponentDescriptor("FILE_SYSTEM", Map.of("path", "target/spool-test/quarantine")));
+    private static final InfrastructureDescriptor INFRASTRUCTURE = Pieces.infrastructure(
+        Pieces.eventBus("IN_MEMORY"),
+        Pieces.inbox("FILE_SYSTEM", Map.of("path", "target/spool-test/inbox")),
+        Pieces.quarantineRepository("FILE_SYSTEM", Map.of("path", "target/spool-test/quarantine")));
 
     @Test
     void create_withEveryTime_buildsTheModule() {
@@ -68,12 +67,11 @@ class JanitorSpoolModuleProviderTest {
     @Test
     void create_withADataLake_givesAJanitorThatWritesBronzeQuarantineBackToIt(@TempDir Path tmp) throws Exception {
         String quarantinePath = tmp.resolve("quarantine").toString();
-        InfrastructureDescriptor infrastructure = new InfrastructureDescriptor(
-            null,
-            new InfrastructureComponentDescriptor("IN_MEMORY", Map.of()),
-            new InfrastructureComponentDescriptor("FILE_SYSTEM", Map.of("path", tmp.resolve("inbox").toString())),
-            new InfrastructureComponentDescriptor("FILE_SYSTEM", Map.of("path", tmp.resolve("lake").toString())),
-            new InfrastructureComponentDescriptor("FILE_SYSTEM", Map.of("path", quarantinePath)));
+        InfrastructureDescriptor infrastructure = Pieces.infrastructure(
+            Pieces.eventBus("IN_MEMORY"),
+            Pieces.inbox("FILE_SYSTEM", Map.of("path", tmp.resolve("inbox").toString())),
+            Pieces.dataLake("FILE_SYSTEM", Map.of("path", tmp.resolve("lake").toString())),
+            Pieces.quarantineRepository("FILE_SYSTEM", Map.of("path", quarantinePath)));
         PartitionKey partition = PartitionKey.ofEntriesWithoutDate().with("source", "boe").build();
         Envelope envelope = new Envelope(IdempotencyKey.of("k1"), new EventMetadata(), MediaTypes.JSON, "{}".getBytes(),
             EnvelopeStatus.PERSISTED, 0, Instant.now(), Instant.now());

@@ -1,5 +1,6 @@
 package software.spool.dsl.providers.crawler;
 
+import software.spool.dsl.Pieces;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -83,9 +84,7 @@ class CrawlerErrorRouterTest {
             : Map.of("sourceId", "s", "eventClassName", "StreamedOrder");
         SourceDescriptor source = new SourceDescriptor(sourceType, "s", sourceConfiguration, Extended.named("JSON_ARRAY", "source.normalizer"), MediaTypes.JSON, "", List.of());
         EventMappingDescriptor mapping = new EventMappingDescriptor(NamingConvention.SNAKE_CASE, List.of(), List.of());
-        InfrastructureComponentDescriptor bus = new InfrastructureComponentDescriptor("IN_MEMORY", Map.of());
-        InfrastructureComponentDescriptor inbox = new InfrastructureComponentDescriptor("FILE_SYSTEM", Map.of("path", tmp.toString()));
-        InfrastructureDescriptor infra = new InfrastructureDescriptor(null, bus, inbox, null);
-        return new SpoolNodeDescriptor(infra, List.of(new CrawlerDescriptor(crawlerType, "c", source, mapping, errorRouter, Optional.empty())));
+        return Pieces.node(List.of(new CrawlerDescriptor(crawlerType, "c", source, mapping, errorRouter, Optional.empty())),
+            Pieces.eventBus("IN_MEMORY"), Pieces.inbox("FILE_SYSTEM", Map.of("path", tmp.toString())));
     }
 }

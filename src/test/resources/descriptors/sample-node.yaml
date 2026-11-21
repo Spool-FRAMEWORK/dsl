@@ -1,20 +1,24 @@
-infrastructure:
-  watchdog: "http://host.docker.internal:8090"
+watchdog: "http://host.docker.internal:8090"
 
+infrastructure:
   eventBus:
+    kind: EVENT_BUS
     type: IN_MEMORY
 
   inbox:
+    kind: INBOX
     type: FILE_SYSTEM
     configuration:
       path: "D:/spool/inbox"
 
   dataLake:
+    kind: DATA_LAKE
     type: FILE_SYSTEM
     configuration:
       path: "D:/spool/datalake"
 
   quarantineRepository:
+    kind: QUARANTINE_REPOSITORY
     type: FILE_SYSTEM
     configuration:
       path: "D:/spool/quarantine"

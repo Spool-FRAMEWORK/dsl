@@ -10,8 +10,8 @@ Feature: Variables in the descriptor
       variables:
         root: /data/spool
       infrastructure:
-        eventBus: {type: IN_MEMORY}
-        inbox: {type: FILE_SYSTEM, configuration: {path: "${root}"}}
+        eventBus: {kind: EVENT_BUS, type: IN_MEMORY}
+        inbox: {kind: INBOX, type: FILE_SYSTEM, configuration: {path: "${root}"}}
       modules: []
       """
     When the descriptor is loaded
@@ -24,8 +24,8 @@ Feature: Variables in the descriptor
       variables:
         root: /data/spool
       infrastructure:
-        eventBus: {type: IN_MEMORY}
-        inbox: {type: FILE_SYSTEM, configuration: {path: "${root}/inbox"}}
+        eventBus: {kind: EVENT_BUS, type: IN_MEMORY}
+        inbox: {kind: INBOX, type: FILE_SYSTEM, configuration: {path: "${root}/inbox"}}
       modules: []
       """
     When the descriptor is loaded
@@ -39,8 +39,8 @@ Feature: Variables in the descriptor
         root: /data/spool
         inbox: ${root}/inbox
       infrastructure:
-        eventBus: {type: IN_MEMORY}
-        inbox: {type: FILE_SYSTEM, configuration: {path: "${inbox}"}}
+        eventBus: {kind: EVENT_BUS, type: IN_MEMORY}
+        inbox: {kind: INBOX, type: FILE_SYSTEM, configuration: {path: "${inbox}"}}
       modules: []
       """
     When the descriptor is loaded
@@ -52,8 +52,8 @@ Feature: Variables in the descriptor
     And the descriptor:
       """
       infrastructure:
-        eventBus: {type: IN_MEMORY}
-        inbox: {type: FILE_SYSTEM, configuration: {path: "${env:SPOOL_ROOT}/inbox"}}
+        eventBus: {kind: EVENT_BUS, type: IN_MEMORY}
+        inbox: {kind: INBOX, type: FILE_SYSTEM, configuration: {path: "${env:SPOOL_ROOT}/inbox"}}
       modules: []
       """
     When the descriptor is loaded
@@ -64,8 +64,8 @@ Feature: Variables in the descriptor
     Given the descriptor:
       """
       infrastructure:
-        eventBus: {type: IN_MEMORY}
-        inbox: {type: FILE_SYSTEM, configuration: {path: "${env:SPOOL_ROOT:-/tmp/spool}/inbox"}}
+        eventBus: {kind: EVENT_BUS, type: IN_MEMORY}
+        inbox: {kind: INBOX, type: FILE_SYSTEM, configuration: {path: "${env:SPOOL_ROOT:-/tmp/spool}/inbox"}}
       modules: []
       """
     When the descriptor is loaded
@@ -76,8 +76,8 @@ Feature: Variables in the descriptor
     Given the descriptor:
       """
       infrastructure:
-        eventBus: {type: IN_MEMORY}
-        inbox: {type: FILE_SYSTEM, configuration: {path: "/data/$${root}"}}
+        eventBus: {kind: EVENT_BUS, type: IN_MEMORY}
+        inbox: {kind: INBOX, type: FILE_SYSTEM, configuration: {path: "/data/$${root}"}}
       modules: []
       """
     When the descriptor is loaded
@@ -94,8 +94,8 @@ Feature: Variables in the descriptor
           variables:
             root: /srv/spool
       infrastructure:
-        eventBus: {type: IN_MEMORY}
-        inbox: {type: FILE_SYSTEM, configuration: {path: "${root}"}}
+        eventBus: {kind: EVENT_BUS, type: IN_MEMORY}
+        inbox: {kind: INBOX, type: FILE_SYSTEM, configuration: {path: "${root}"}}
       modules: []
       """
     When the descriptor is loaded with the profile "production"
@@ -106,9 +106,9 @@ Feature: Variables in the descriptor
     Given the descriptor:
       """
       infrastructure:
-        eventBus: {type: IN_MEMORY}
-        inbox: &local {type: FILE_SYSTEM, configuration: {path: /data/spool}}
-        dataLake: *local
+        eventBus: {kind: EVENT_BUS, type: IN_MEMORY}
+        inbox: {kind: INBOX, type: FILE_SYSTEM, configuration: &local {path: /data/spool}}
+        dataLake: {kind: DATA_LAKE, type: FILE_SYSTEM, configuration: *local}
       modules: []
       """
     When the descriptor is loaded
@@ -119,8 +119,8 @@ Feature: Variables in the descriptor
     Given the descriptor:
       """
       infrastructure:
-        eventBus: {type: IN_MEMORY}
-        inbox: {type: FILE_SYSTEM, configuration: {path: "${rot}/inbox"}}
+        eventBus: {kind: EVENT_BUS, type: IN_MEMORY}
+        inbox: {kind: INBOX, type: FILE_SYSTEM, configuration: {path: "${rot}/inbox"}}
       modules: []
       """
     When the descriptor is loaded
@@ -136,8 +136,8 @@ Feature: Variables in the descriptor
         a: ${b}
         b: ${a}
       infrastructure:
-        eventBus: {type: IN_MEMORY}
-        inbox: {type: FILE_SYSTEM, configuration: {path: "${a}"}}
+        eventBus: {kind: EVENT_BUS, type: IN_MEMORY}
+        inbox: {kind: INBOX, type: FILE_SYSTEM, configuration: {path: "${a}"}}
       modules: []
       """
     When the descriptor is loaded
@@ -149,8 +149,8 @@ Feature: Variables in the descriptor
     Given the descriptor:
       """
       infrastructure:
-        eventBus: {type: IN_MEMORY}
-        inbox: {type: FILE_SYSTEM, configuration: {path: "${env:SPOOL_ROOT}"}}
+        eventBus: {kind: EVENT_BUS, type: IN_MEMORY}
+        inbox: {kind: INBOX, type: FILE_SYSTEM, configuration: {path: "${env:SPOOL_ROOT}"}}
       modules: []
       """
     When the descriptor is loaded
@@ -164,8 +164,8 @@ Feature: Variables in the descriptor
     And the descriptor:
       """
       infrastructure:
-        eventBus: {type: IN_MEMORY}
-        inbox: {type: FILE_SYSTEM}
+        eventBus: {kind: EVENT_BUS, type: IN_MEMORY}
+        inbox: {kind: INBOX, type: FILE_SYSTEM}
       modules:
         - janitor:
             id: j1

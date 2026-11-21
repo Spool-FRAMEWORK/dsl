@@ -44,6 +44,7 @@ public class FileSystemDescriptorSteps {
         write(name, """
                 infrastructure:
                   eventBus:
+                    kind: EVENT_BUS
                     type: %s
                 """.formatted(type));
     }
@@ -63,6 +64,7 @@ public class FileSystemDescriptorSteps {
         write(name, """
                 infrastructure:
                   eventBus:
+                    kind: EVENT_BUS
                     type: %s
 
                 modules: []
@@ -71,6 +73,7 @@ public class FileSystemDescriptorSteps {
                   %s:
                     infrastructure:
                       eventBus:
+                        kind: EVENT_BUS
                         type: %s
                 """.formatted(type, profile, profileType));
     }
@@ -89,7 +92,7 @@ public class FileSystemDescriptorSteps {
     public void theEventBusIsOfType(String type) {
         assertThat(failure).isEmpty();
         assertThat(descriptor).hasValueSatisfying(
-                node -> assertThat(node.infrastructure().eventBus().type()).isEqualTo(type));
+                node -> assertThat(node.infrastructure().piece("eventBus").orElseThrow().type()).isEqualTo(type));
     }
 
     @Then("loading fails with the cycle {string}")

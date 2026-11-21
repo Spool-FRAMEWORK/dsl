@@ -25,7 +25,8 @@ public final class ModuleProviderRegistry {
 
     /**
      * Builds a module, giving its provider the authentication providers of the descriptor in the context key
-     * {@value #AUTHENTICATION}, so that an HTTP entry of the module can find the one it names.
+     * {@value #AUTHENTICATION}, so that an HTTP entry of the module can find the one it names. Once built, a piece the
+     * module names in {@code uses} but never asked for fails, since it is almost certainly a mistake.
      */
     public static SpoolModule build(SpoolModuleDescriptor descriptor,
                                     InfrastructureDescriptor infrastructure,
@@ -37,7 +38,9 @@ public final class ModuleProviderRegistry {
                 .build();
 
         try {
-            return PluginResolver.resolve(SpoolModuleProvider.class, config);
+            SpoolModule module = PluginResolver.resolve(SpoolModuleProvider.class, config);
+            infrastructure.checkEveryNamedPieceIsUsed();
+            return module;
         } catch (InvalidDescriptorException e) {
             throw e.inModule(descriptor.id());
         } catch (IllegalStateException e) {

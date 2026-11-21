@@ -273,7 +273,7 @@ Feature: A mounter is declared in the descriptor
     When the node is started from the descriptor
     Then the descriptor is rejected
     And the error names the module "payments-mounter"
-    And the error says "infrastructure.quarantineRepository is required"
+    And the error says "needs a QUARANTINE_REPOSITORY, and infrastructure declares none"
 
   @DEV-81
   Scenario: A mounter without a data lake is rejected
@@ -294,7 +294,7 @@ Feature: A mounter is declared in the descriptor
     When the node is started from the descriptor
     Then the descriptor is rejected
     And the error names the module "payments-mounter"
-    And the error says "infrastructure.dataLake is required"
+    And the error says "needs a DATA_LAKE, and infrastructure declares none"
 
   @DEV-81
   Scenario: A mounter to gold without a data mart in the infrastructure is rejected
@@ -315,7 +315,7 @@ Feature: A mounter is declared in the descriptor
     When the node is started from the descriptor
     Then the descriptor is rejected
     And the error names the module "payments-mounter"
-    And the error says "infrastructure.dataMart is required"
+    And the error says "needs a DATA_MART, and infrastructure declares none"
 
   @DEV-81
   Scenario: A mounter whose aggregator does not exist is rejected

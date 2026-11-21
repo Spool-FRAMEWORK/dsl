@@ -19,6 +19,7 @@ import software.spool.core.model.vo.PartitionedEnvelope;
 import software.spool.core.adapter.jackson.PayloadDeserializerFactory;
 import software.spool.core.adapter.jackson.RecordSerializerFactory;
 import software.spool.dsl.descriptors.SpoolNodeDescriptor;
+import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
 import software.spool.dsl.providers.InfrastructurePluginFactory;
 import software.spool.dsl.acceptance.mounter.Payment;
 import software.spool.dsl.registry.ModuleProviderRegistry;
@@ -56,6 +57,8 @@ public class MounterSteps {
     private boolean withDataLake = true;
     private boolean withDataMart = true;
     private boolean withQuarantine = true;
+    private final Map<String, Path> dataMarts = new LinkedHashMap<>();
+    private final StringBuilder mounters = new StringBuilder();
     private Optional<SpoolNode> node = Optional.empty();
     private int silverFilesBeforeStart;
 
@@ -89,6 +92,13 @@ public class MounterSteps {
         withDataMart = false;
     }
 
+    @Given("the descriptor has the data marts {string} and {string} in temporary folders of the file system")
+    public void theDescriptorHasTheDataMarts(String first, String second) throws IOException {
+        withDataMart = false;
+        dataMarts.put(first, Files.createTempDirectory("spool-data-mart-" + first));
+        dataMarts.put(second, Files.createTempDirectory("spool-data-mart-" + second));
+    }
+
     @Given("the payments source rejects a negative amount")
     public void thePaymentsSourceRejectsANegativeAmount() {
         assertThat(new ValidatorRegistry().hasValidatorsFor("payments", Payment.class)).isTrue();
@@ -111,13 +121,12 @@ public class MounterSteps {
 
     @Given("the descriptor declares the mounter {string}:")
     public void theDescriptorDeclaresTheMounter(String id, String mounter) {
-        StringBuilder yaml = new StringBuilder("infrastructure:\n  eventBus: {type: IN_MEMORY}\n");
-        if (withDataLake) yaml.append(component("dataLake", dataLake));
-        if (withDataMart) yaml.append(component("dataMart", dataMart));
-        if (withQuarantine) yaml.append(component("quarantineRepository", quarantine));
-        yaml.append("modules:\n  - mounter:\n      id: ").append(id).append('\n');
-        mounter.lines().forEach(line -> yaml.append("      ").append(line).append('\n'));
-        descriptor.write(yaml.toString());
+        declareMounter(id, "", mounter);
+    }
+
+    @Given("the descriptor declares the mounter {string} that uses {string}:")
+    public void theDescriptorDeclaresTheMounterThatUses(String id, String piece, String mounter) {
+        declareMounter(id, "      uses: [" + piece + "]\n", mounter);
     }
 
     @When("the node is started from the descriptor")
@@ -132,13 +141,14 @@ public class MounterSteps {
     @When("the mounter {string} mounts once")
     public void theMounterMountsOnce(String id) {
         descriptor.loaded();
-        eventually(() -> assertThat(filesUnder(silver()).size() > silverFilesBeforeStart || !filesUnder(gold()).isEmpty())
+        eventually(() -> assertThat(filesUnder(silver()).size() > silverFilesBeforeStart || goldWasWritten())
                 .as("files written by " + id).isTrue());
     }
 
     @When("the ingester reports that it wrote the partition {string}")
     public void theIngesterReportsThatItWroteThePartition(String partition) {
-        InfrastructurePluginFactory.eventBus(descriptor.loaded().infrastructure()).publish(EnvelopePersisted.builder()
+        SpoolNodeDescriptor loaded = descriptor.loaded();
+        InfrastructurePluginFactory.eventBus(InfrastructureDescriptor.unnamed(loaded.watchdog(), loaded.infrastructure())).publish(EnvelopePersisted.builder()
                 .idempotencyKey(IdempotencyKey.of("reported-" + partition))
                 .partitionKey(partitionOf(BRONZE_DATE_ENTRIES + "/" + partition))
                 .build());
@@ -187,6 +197,20 @@ public class MounterSteps {
         });
     }
 
+    @Then("the data mart {string} has a single record with the total amount {long} in {string}")
+    public void theDataMartHasASingleRecordWithTheTotalAmount(String piece, long total, String dataMartName) {
+        eventually(() -> {
+            List<Path> files = filesUnder(dataMarts.get(piece).resolve("gold").resolve(dataMartName));
+            assertThat(files).hasSize(1);
+            assertThat(read(files.getFirst())).contains("\"totalAmount\":" + total);
+        });
+    }
+
+    @Then("the data mart {string} has nothing in {string}")
+    public void theDataMartHasNothingIn(String piece, String dataMartName) {
+        assertThat(filesUnder(dataMarts.get(piece).resolve("gold").resolve(dataMartName))).isEmpty();
+    }
+
     @Then("the record {string} is in the quarantine")
     public void theRecordIsInTheQuarantine(String record) {
         eventually(() -> assertThat(filesUnder(quarantine).stream().map(MounterSteps::read))
@@ -215,13 +239,26 @@ public class MounterSteps {
 
     private static SpoolNode startedNode(SpoolNodeDescriptor loaded) throws IOException {
         SpoolNode started = SpoolNode.create(freePort());
-        loaded.modules().forEach(module -> started.register(ModuleProviderRegistry.build(module, loaded.infrastructure())));
+        loaded.declaredModules().forEach(module ->
+                started.register(ModuleProviderRegistry.build(module.descriptor(), loaded.infrastructureOf(module))));
         started.start();
         return started;
     }
 
-    private static String component(String name, Path path) {
-        return "  " + name + ": {type: FILE_SYSTEM, configuration: {path: \"" + path.toString().replace('\\', '/') + "\"}}\n";
+    private void declareMounter(String id, String uses, String mounter) {
+        mounters.append("  - mounter:\n      id: ").append(id).append('\n').append(uses);
+        mounter.lines().forEach(line -> mounters.append("      ").append(line).append('\n'));
+        StringBuilder yaml = new StringBuilder("infrastructure:\n  bus: {kind: EVENT_BUS, type: IN_MEMORY}\n");
+        if (withDataLake) yaml.append(piece("lake", "DATA_LAKE", dataLake));
+        if (withDataMart) yaml.append(piece("mart", "DATA_MART", dataMart));
+        dataMarts.forEach((name, path) -> yaml.append(piece(name, "DATA_MART", path)));
+        if (withQuarantine) yaml.append(piece("quarantine", "QUARANTINE_REPOSITORY", quarantine));
+        descriptor.write(yaml.append("modules:\n").append(mounters).toString());
+    }
+
+    private static String piece(String name, String kind, Path path) {
+        return "  " + name + ": {kind: " + kind + ", type: FILE_SYSTEM, configuration: {path: \""
+                + path.toString().replace('\\', '/') + "\"}}\n";
     }
 
     private static Envelope envelope(String source, Map<String, String> record) {
@@ -248,6 +285,11 @@ public class MounterSteps {
 
     private Path silver() {
         return dataLake.resolve("silver");
+    }
+
+    private boolean goldWasWritten() {
+        return !filesUnder(gold()).isEmpty()
+                || dataMarts.values().stream().anyMatch(dataMart -> !filesUnder(dataMart.resolve("gold")).isEmpty());
     }
 
     private Path gold() {

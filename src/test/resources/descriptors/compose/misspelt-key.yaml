@@ -1,5 +1,6 @@
 infrastructure:
-  evenBus:
-    type: IN_MEMORY
+  eventBus:
+    kind: EVENT_BUS
+    tipe: IN_MEMORY
 
 modules: []

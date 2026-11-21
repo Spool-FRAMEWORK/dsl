@@ -28,8 +28,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class NormalizerCompositionSteps {
     private static final String CRAWLER = """
             infrastructure:
-              eventBus: {type: IN_MEMORY}
-              inbox: {type: FILE_SYSTEM, configuration: {path: target/spool-test/normalizer-inbox}}
+              eventBus: {kind: EVENT_BUS, type: IN_MEMORY}
+              inbox: {kind: INBOX, type: FILE_SYSTEM, configuration: {path: target/spool-test/normalizer-inbox}}
             modules:
               - crawler:
                   type: POLL

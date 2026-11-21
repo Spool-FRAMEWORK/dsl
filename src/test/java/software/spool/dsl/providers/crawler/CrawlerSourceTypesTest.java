@@ -1,5 +1,6 @@
 package software.spool.dsl.providers.crawler;
 
+import software.spool.dsl.Pieces;
 import org.junit.jupiter.api.Test;
 import software.spool.core.port.serde.NamingConvention;
 import software.spool.dsl.InvalidDescriptorException;
@@ -20,7 +21,6 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class CrawlerSourceTypesTest {
 
-    private static final InfrastructureComponentDescriptor BUS = new InfrastructureComponentDescriptor("IN_MEMORY", Map.of());
 
     @Test
     void pollCrawler_withAnUnknownSourceType_namesTheKeyTheModuleAndTheKnownSources() {
@@ -45,7 +45,7 @@ class CrawlerSourceTypesTest {
     private static SpoolNodeDescriptor node(String crawlerType, String sourceType) {
         SourceDescriptor source = new SourceDescriptor(sourceType, "s", Map.of(), Extended.named("JSON_ARRAY", "source.normalizer"), MediaTypes.JSON, "", List.of());
         EventMappingDescriptor mapping = new EventMappingDescriptor(NamingConvention.SNAKE_CASE, List.of(), List.of());
-        InfrastructureDescriptor infra = new InfrastructureDescriptor(null, BUS, BUS, BUS);
-        return new SpoolNodeDescriptor(infra, List.of(new CrawlerDescriptor(crawlerType, "c", source, mapping)));
+        return Pieces.node(List.of(new CrawlerDescriptor(crawlerType, "c", source, mapping)),
+            Pieces.eventBus("IN_MEMORY"), Pieces.inbox("IN_MEMORY", Map.of()));
     }
 }

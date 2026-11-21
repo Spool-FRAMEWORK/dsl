@@ -54,12 +54,12 @@ public class DescriptorSteps {
 
     @Then("the inbox path is {string}")
     public void theInboxPathIs(String path) {
-        assertThat(descriptor.loaded().infrastructure().inbox().configuration()).containsEntry("path", path);
+        assertThat(descriptor.loaded().infrastructure().piece("inbox").orElseThrow().configuration()).containsEntry("path", path);
     }
 
     @Then("the data lake path is {string}")
     public void theDataLakePathIs(String path) {
-        assertThat(descriptor.loaded().infrastructure().dataLake().configuration()).containsEntry("path", path);
+        assertThat(descriptor.loaded().infrastructure().piece("dataLake").orElseThrow().configuration()).containsEntry("path", path);
     }
 
     @Then("the node knows the providers {string} and {string}")
@@ -84,7 +84,7 @@ public class DescriptorSteps {
 
     private void declare(String name, String provider) {
         providers.put(name, provider);
-        StringBuilder yaml = new StringBuilder("infrastructure:\n  eventBus: {type: IN_MEMORY}\nauthentication:\n");
+        StringBuilder yaml = new StringBuilder("infrastructure:\n  eventBus: {kind: EVENT_BUS, type: IN_MEMORY}\nauthentication:\n");
         providers.forEach((declared, body) -> yaml.append("  ").append(declared).append(": ").append(body).append('\n'));
         descriptor.write(yaml.append("modules: []\n").toString());
     }

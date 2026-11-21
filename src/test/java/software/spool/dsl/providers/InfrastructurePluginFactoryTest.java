@@ -5,6 +5,7 @@ import software.spool.core.port.serde.EnrichmentRule;
 import software.spool.core.utils.media.MediaTypes;
 import software.spool.crawler.api.normalizer.Normalizer;
 import software.spool.dsl.InvalidDescriptorException;
+import software.spool.dsl.Pieces;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureComponentDescriptor;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
 import software.spool.dsl.descriptors.module.crawler.source.NormalizerDescriptor.Extended;
@@ -19,7 +20,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class InfrastructurePluginFactoryTest {
 
-    private static final InfrastructureComponentDescriptor BUS = new InfrastructureComponentDescriptor("IN_MEMORY", Map.of());
+    private static final InfrastructureComponentDescriptor BUS = Pieces.eventBus("IN_MEMORY");
+    private static final InfrastructureComponentDescriptor INBOX = Pieces.inbox("FILE_SYSTEM", Map.of("path", "target/spool-test/inbox"));
+    private static final InfrastructureComponentDescriptor LAKE = Pieces.dataLake("FILE_SYSTEM", Map.of("path", "target/spool-test/lake"));
 
     private static SourceDescriptor source(String normalizer) {
         return new SourceDescriptor("HTTP", "s", Map.of(), Extended.named(normalizer, "source.normalizer"),
@@ -33,24 +36,23 @@ class InfrastructurePluginFactoryTest {
 
     @Test
     void eventBus_needsNoOtherComponent() {
-        InfrastructureDescriptor onlyTheBus = new InfrastructureDescriptor(null, BUS, null, null);
+        InfrastructureDescriptor onlyTheBus = Pieces.infrastructure(BUS);
 
         assertThat(InfrastructurePluginFactory.eventBus(onlyTheBus)).isNotNull();
     }
 
     @Test
-    void eventBus_withoutIt_namesTheKey() {
-        InfrastructureDescriptor none = new InfrastructureDescriptor(null, null, null, null);
+    void eventBus_withoutIt_namesTheKind() {
+        InfrastructureDescriptor none = Pieces.infrastructure();
 
         assertThatThrownBy(() -> InfrastructurePluginFactory.eventBus(none))
             .isInstanceOf(InvalidDescriptorException.class)
-            .hasMessage("infrastructure.eventBus is required");
+            .hasMessage("the module needs an EVENT_BUS, and infrastructure declares none");
     }
 
     @Test
     void eventBus_withAnUnknownType_namesTheKeyAndTheKnownOnes() {
-        InfrastructureDescriptor unknown = new InfrastructureDescriptor(null,
-            new InfrastructureComponentDescriptor("KAFKAA", Map.of()), null, null);
+        InfrastructureDescriptor unknown = Pieces.infrastructure(Pieces.eventBus("KAFKAA"));
 
         assertThatThrownBy(() -> InfrastructurePluginFactory.eventBus(unknown))
             .isInstanceOf(InvalidDescriptorException.class)
@@ -60,8 +62,7 @@ class InfrastructurePluginFactoryTest {
 
     @Test
     void inboxWriter_withAnUnknownType_namesTheKeyAndTheKnownOnes() {
-        InfrastructureDescriptor unknown = new InfrastructureDescriptor(null, BUS,
-            new InfrastructureComponentDescriptor("NOPE", Map.of()), null);
+        InfrastructureDescriptor unknown = Pieces.infrastructure(BUS, Pieces.inbox("NOPE", Map.of()));
 
         assertThatThrownBy(() -> InfrastructurePluginFactory.inboxWriter(unknown))
             .hasMessageStartingWith("infrastructure.inbox.type 'NOPE' is not a known inbox writer. Known: ")
@@ -70,8 +71,7 @@ class InfrastructurePluginFactoryTest {
 
     @Test
     void dataLakeWriter_withAnUnknownType_namesTheKeyAndTheKnownOnes() {
-        InfrastructureDescriptor unknown = new InfrastructureDescriptor(null, BUS, BUS,
-            new InfrastructureComponentDescriptor("NOPE", Map.of()));
+        InfrastructureDescriptor unknown = Pieces.infrastructure(BUS, INBOX, Pieces.dataLake("NOPE", Map.of()));
 
         assertThatThrownBy(() -> InfrastructurePluginFactory.dataLakeWriter(unknown))
             .hasMessageStartingWith("infrastructure.dataLake.type 'NOPE' is not a known data lake writer. Known: ")
@@ -118,33 +118,32 @@ class InfrastructurePluginFactoryTest {
     }
 
     @Test
-    void inboxWriter_withoutInbox_namesTheKey() {
-        InfrastructureDescriptor withoutInbox = new InfrastructureDescriptor(null, BUS, null, null);
+    void inboxWriter_withoutInbox_namesTheKind() {
+        InfrastructureDescriptor withoutInbox = Pieces.infrastructure(BUS);
 
         assertThatThrownBy(() -> InfrastructurePluginFactory.inboxWriter(withoutInbox))
-            .hasMessage("infrastructure.inbox is required");
+            .hasMessage("the module needs an INBOX, and infrastructure declares none");
     }
 
     @Test
-    void dataLakeWriter_withoutDataLake_namesTheKey() {
-        InfrastructureDescriptor withoutDataLake = new InfrastructureDescriptor(null, BUS, BUS, null);
+    void dataLakeWriter_withoutDataLake_namesTheKind() {
+        InfrastructureDescriptor withoutDataLake = Pieces.infrastructure(BUS, INBOX);
 
         assertThatThrownBy(() -> InfrastructurePluginFactory.dataLakeWriter(withoutDataLake))
-            .hasMessage("infrastructure.dataLake is required");
+            .hasMessage("the module needs a DATA_LAKE, and infrastructure declares none");
     }
 
     @Test
-    void quarantineRepository_withoutIt_namesTheKey() {
-        InfrastructureDescriptor withoutQuarantineRepository = new InfrastructureDescriptor(null, BUS, BUS, BUS);
+    void quarantineRepository_withoutIt_namesTheKind() {
+        InfrastructureDescriptor withoutQuarantineRepository = Pieces.infrastructure(BUS, INBOX, LAKE);
 
         assertThatThrownBy(() -> InfrastructurePluginFactory.quarantineRepository(withoutQuarantineRepository))
-            .hasMessage("infrastructure.quarantineRepository is required");
+            .hasMessage("the module needs a QUARANTINE_REPOSITORY, and infrastructure declares none");
     }
 
     @Test
     void quarantineRepository_withAnUnknownType_namesTheKeyAndTheKnownOnes() {
-        InfrastructureDescriptor unknown = new InfrastructureDescriptor(null, BUS, BUS, BUS,
-            new InfrastructureComponentDescriptor("NOPE", Map.of()));
+        InfrastructureDescriptor unknown = Pieces.infrastructure(BUS, INBOX, LAKE, Pieces.quarantineRepository("NOPE", Map.of()));
 
         assertThatThrownBy(() -> InfrastructurePluginFactory.quarantineRepository(unknown))
             .hasMessageStartingWith("infrastructure.quarantineRepository.type 'NOPE' is not a known quarantine repository. Known: ")
@@ -153,8 +152,8 @@ class InfrastructurePluginFactoryTest {
 
     @Test
     void quarantineRepository_withAKnownType_returnsIt() {
-        InfrastructureDescriptor withQuarantineRepository = new InfrastructureDescriptor(null, BUS, BUS, BUS,
-            new InfrastructureComponentDescriptor("FILE_SYSTEM", Map.of("path", "target/spool-test/quarantine")));
+        InfrastructureDescriptor withQuarantineRepository = Pieces.infrastructure(BUS, INBOX, LAKE,
+            Pieces.quarantineRepository("FILE_SYSTEM", Map.of("path", "target/spool-test/quarantine")));
 
         assertThat(InfrastructurePluginFactory.quarantineRepository(withQuarantineRepository)).isNotNull();
     }

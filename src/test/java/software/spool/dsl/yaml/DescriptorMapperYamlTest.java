@@ -2,11 +2,11 @@ package software.spool.dsl.yaml;
 
 import events.StreamedOrder;
 import org.junit.jupiter.api.Test;
-import software.spool.core.adapter.jackson.PayloadDeserializerFactory;
 import software.spool.core.port.serde.EnrichmentRule;
 import software.spool.core.port.serde.NamingConvention;
 import software.spool.core.utils.media.MediaTypes;
-import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
+import software.spool.dsl.descriptors.infrastructure.InfrastructureComponentDescriptor;
+import software.spool.dsl.descriptors.infrastructure.InfrastructureKind;
 import software.spool.dsl.InvalidDescriptorException;
 import software.spool.dsl.descriptors.SpoolNodeDescriptor;
 import software.spool.dsl.descriptors.module.crawler.CrawlerDescriptor;
@@ -31,11 +31,11 @@ class DescriptorMapperYamlTest {
 
         SpoolNodeDescriptor node = DescriptorMapper.map(read(yaml));
 
-        assertThat(node.infrastructure().watchdog()).isEqualTo("http://host.docker.internal:8090");
-        assertThat(node.infrastructure().eventBus().type()).isEqualTo("IN_MEMORY");
-        assertThat(node.infrastructure().inbox().type()).isEqualTo("FILE_SYSTEM");
-        assertThat(node.infrastructure().inbox().configuration()).containsEntry("path", "D:/spool/inbox");
-        assertThat(node.infrastructure().dataLake().type()).isEqualTo("FILE_SYSTEM");
+        assertThat(node.watchdog()).contains("http://host.docker.internal:8090");
+        assertThat(node.infrastructure().piece("eventBus").orElseThrow().type()).isEqualTo("IN_MEMORY");
+        assertThat(node.infrastructure().piece("inbox").orElseThrow().type()).isEqualTo("FILE_SYSTEM");
+        assertThat(node.infrastructure().piece("inbox").orElseThrow().configuration()).containsEntry("path", "D:/spool/inbox");
+        assertThat(node.infrastructure().piece("dataLake").orElseThrow().type()).isEqualTo("FILE_SYSTEM");
         assertThat(node.modules()).hasSize(3);
 
         CrawlerDescriptor crawler = (CrawlerDescriptor) node.modules().get(0);
@@ -66,9 +66,9 @@ class DescriptorMapperYamlTest {
     void map_crawlerWithEnrichmentAndListsInBothForms_keepsThem() {
         String yaml = """
                 infrastructure:
-                  eventBus: {type: IN_MEMORY}
-                  inbox: {type: FILE_SYSTEM}
-                  dataLake: {type: FILE_SYSTEM}
+                  eventBus: {kind: EVENT_BUS, type: IN_MEMORY}
+                  inbox: {kind: INBOX, type: FILE_SYSTEM}
+                  dataLake: {kind: DATA_LAKE, type: FILE_SYSTEM}
                 modules:
                   - crawler:
                       type: STREAM
@@ -104,8 +104,9 @@ class DescriptorMapperYamlTest {
     void map_quarantineRepository_keepsItsTypeAndConfiguration() {
         String yaml = """
                 infrastructure:
-                  eventBus: {type: IN_MEMORY}
+                  eventBus: {kind: EVENT_BUS, type: IN_MEMORY}
                   quarantineRepository:
+                    kind: QUARANTINE_REPOSITORY
                     type: FILE_SYSTEM
                     configuration:
                       path: "/spool/quarantine"
@@ -114,17 +115,19 @@ class DescriptorMapperYamlTest {
                       id: j1
                 """;
 
-        InfrastructureDescriptor infrastructure = DescriptorMapper.map(read(yaml.getBytes(StandardCharsets.UTF_8))).infrastructure();
+        InfrastructureComponentDescriptor quarantine = DescriptorMapper.map(read(yaml.getBytes(StandardCharsets.UTF_8)))
+                .infrastructure().piece("quarantineRepository").orElseThrow();
 
-        assertThat(infrastructure.quarantineRepository().pluginName()).isEqualTo("FILE_SYSTEM");
-        assertThat(infrastructure.quarantineRepository().configuration()).containsEntry("path", "/spool/quarantine");
+        assertThat(quarantine.kind()).isEqualTo(InfrastructureKind.QUARANTINE_REPOSITORY);
+        assertThat(quarantine.pluginName()).isEqualTo("FILE_SYSTEM");
+        assertThat(quarantine.configuration()).containsEntry("path", "/spool/quarantine");
     }
 
     @Test
-    void map_quarantineStore_saysToUseQuarantineRepository() {
+    void map_quarantineStoreWithoutAKind_saysWhichKindToAdd() {
         String yaml = """
                 infrastructure:
-                  eventBus: {type: IN_MEMORY}
+                  eventBus: {kind: EVENT_BUS, type: IN_MEMORY}
                   quarantineStore:
                     type: FILE_SYSTEM
                 modules:
@@ -134,16 +137,15 @@ class DescriptorMapperYamlTest {
 
         assertThatThrownBy(() -> DescriptorMapper.map(read(yaml.getBytes(StandardCharsets.UTF_8))))
                 .isInstanceOf(InvalidDescriptorException.class)
-                .hasMessageContaining("infrastructure.quarantineStore")
-                .hasMessageContaining("infrastructure.quarantineRepository");
+                .hasMessage("infrastructure.quarantineStore needs a kind: add kind: QUARANTINE_REPOSITORY");
     }
 
     @Test
     void map_janitorWithAQuarantineTtl_keepsIt() {
         String yaml = """
                 infrastructure:
-                  eventBus: {type: IN_MEMORY}
-                  inbox: {type: FILE_SYSTEM}
+                  eventBus: {kind: EVENT_BUS, type: IN_MEMORY}
+                  inbox: {kind: INBOX, type: FILE_SYSTEM}
                 modules:
                   - janitor:
                       id: j1
@@ -163,8 +165,8 @@ class DescriptorMapperYamlTest {
     void map_janitorWithAQuarantineTtlThatIsNotADuration_namesTheKey() {
         String yaml = """
                 infrastructure:
-                  eventBus: {type: IN_MEMORY}
-                  inbox: {type: FILE_SYSTEM}
+                  eventBus: {kind: EVENT_BUS, type: IN_MEMORY}
+                  inbox: {kind: INBOX, type: FILE_SYSTEM}
                 modules:
                   - janitor:
                       id: j1
@@ -181,8 +183,8 @@ class DescriptorMapperYamlTest {
     void map_janitorWithMaxInboxUpdateAttempts_keepsIt() {
         String yaml = """
                 infrastructure:
-                  eventBus: {type: IN_MEMORY}
-                  inbox: {type: FILE_SYSTEM}
+                  eventBus: {kind: EVENT_BUS, type: IN_MEMORY}
+                  inbox: {kind: INBOX, type: FILE_SYSTEM}
                 modules:
                   - janitor:
                       id: j1
@@ -200,8 +202,8 @@ class DescriptorMapperYamlTest {
     void map_janitorWithMaxInboxUpdateAttemptsThatIsNotAnInteger_namesTheKey() {
         String yaml = """
                 infrastructure:
-                  eventBus: {type: IN_MEMORY}
-                  inbox: {type: FILE_SYSTEM}
+                  eventBus: {kind: EVENT_BUS, type: IN_MEMORY}
+                  inbox: {kind: INBOX, type: FILE_SYSTEM}
                 modules:
                   - janitor:
                       id: j1
@@ -218,8 +220,8 @@ class DescriptorMapperYamlTest {
     void map_janitorWithoutAQuarantineTtl_isValid() {
         String yaml = """
                 infrastructure:
-                  eventBus: {type: IN_MEMORY}
-                  inbox: {type: FILE_SYSTEM}
+                  eventBus: {kind: EVENT_BUS, type: IN_MEMORY}
+                  inbox: {kind: INBOX, type: FILE_SYSTEM}
                 modules:
                   - janitor:
                       id: j1
@@ -232,6 +234,6 @@ class DescriptorMapperYamlTest {
     }
 
     private static RawSpoolNodeDescriptor read(byte[] yaml) {
-        return PayloadDeserializerFactory.yaml().as(RawSpoolNodeDescriptor.class).deserialize(yaml);
+        return RawSpoolNodeDescriptor.from(new YamlTreeParser().deserialize(yaml));
     }
 }

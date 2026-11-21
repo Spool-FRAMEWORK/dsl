@@ -1,15 +1,14 @@
 package software.spool.dsl.yaml;
 
 import software.spool.dsl.InvalidDescriptorException;
+import software.spool.dsl.descriptors.DeclaredModule;
 import software.spool.dsl.descriptors.SpoolNodeDescriptor;
 import software.spool.dsl.descriptors.authentication.AuthenticationDescriptor;
-import software.spool.dsl.descriptors.infrastructure.InfrastructureComponentDescriptor;
-import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
-import software.spool.dsl.descriptors.module.SpoolModuleDescriptor;
+import software.spool.dsl.descriptors.infrastructure.DeclaredInfrastructure;
 import software.spool.dsl.providers.ModuleDescriptorProvider;
 import software.spool.dsl.reader.DescriptorReader;
+import software.spool.dsl.reader.ValueParsers;
 import software.spool.dsl.yaml.raw.RawComponentDescriptor;
-import software.spool.dsl.yaml.raw.RawInfrastructureDescriptor;
 import software.spool.dsl.yaml.raw.RawSpoolNodeDescriptor;
 import software.spool.infrastructure.PluginRegistry;
 import software.spool.infrastructure.PluginResolver;
@@ -18,16 +17,21 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
 public final class DescriptorMapper {
+    private static final String USES = "uses";
+
     private DescriptorMapper() {}
 
     public static SpoolNodeDescriptor map(RawSpoolNodeDescriptor raw) {
+        DeclaredInfrastructure infrastructure = InfrastructureMapper.map(raw.infrastructure());
         return new SpoolNodeDescriptor(
-                toInfrastructure(raw.infrastructure()),
-                toModules(raw.modules()),
+                Optional.ofNullable(raw.watchdog()),
+                infrastructure,
+                toModules(raw.modules(), infrastructure),
                 toAuthentication(raw.authentication())
         );
     }
@@ -41,52 +45,30 @@ public final class DescriptorMapper {
         return providers;
     }
 
-    private static InfrastructureDescriptor toInfrastructure(RawInfrastructureDescriptor raw) {
-        DescriptorReader.require("infrastructure", raw);
-        if (raw.quarantineStore() != null) {
-            throw new InvalidDescriptorException("infrastructure.quarantineStore",
-                    "is no longer supported: the janitor keeps the quarantine in infrastructure.quarantineRepository");
+    private static List<DeclaredModule> toModules(List<Map<String, Object>> entries, DeclaredInfrastructure infrastructure) {
+        List<Map<String, Object>> modules = DescriptorReader.require("modules", entries);
+        List<DeclaredModule> declared = new ArrayList<>();
+        for (int i = 0; i < modules.size(); i++) {
+            declared.add(toModule(DescriptorReader.of("modules[" + i + "]", modules.get(i)), infrastructure));
         }
-        return new InfrastructureDescriptor(
-                raw.watchdog(),
-                toComponent("infrastructure.eventBus", raw.eventBus()),
-                toComponent("infrastructure.inbox", raw.inbox()),
-                toComponent("infrastructure.dataLake", raw.dataLake()),
-                toComponent("infrastructure.quarantineRepository", raw.quarantineRepository()),
-                toComponent("infrastructure.dataMart", raw.dataMart())
-        );
+        return declared;
     }
 
     /**
-     * A component that is not in the descriptor is left out: only the modules that use it need it, and
-     * {@code InfrastructurePluginFactory} asks for it at that point.
+     * Each entry names its module type with its only key; the provider registered for that name reads it. The pieces
+     * in {@code uses} are read here, since every module has them and no provider knows them.
      */
-    private static InfrastructureComponentDescriptor toComponent(String path, RawComponentDescriptor raw) {
-        if (raw == null) return null;
-        return new InfrastructureComponentDescriptor(
-                DescriptorReader.require(path + ".type", raw.type()),
-                raw.configuration() != null ? raw.configuration() : Map.of()
-        );
-    }
-
-    private static List<SpoolModuleDescriptor> toModules(List<Map<String, Object>> entries) {
-        List<Map<String, Object>> modules = DescriptorReader.require("modules", entries);
-        List<SpoolModuleDescriptor> descriptors = new ArrayList<>();
-        for (int i = 0; i < modules.size(); i++) {
-            descriptors.add(toModule(DescriptorReader.of("modules[" + i + "]", modules.get(i))));
-        }
-        return descriptors;
-    }
-
-    /** Each entry names its module type with its only key; the provider registered for that name reads it. */
-    private static SpoolModuleDescriptor toModule(DescriptorReader entry) {
+    private static DeclaredModule toModule(DescriptorReader entry, DeclaredInfrastructure infrastructure) {
         Set<String> keys = entry.keys();
         if (keys.size() != 1) {
             throw new InvalidDescriptorException(entry.path(),
                     "must have exactly one key naming the module type, found " + keys);
         }
         String type = keys.iterator().next();
-        return providerFor(entry.path(), type).read(entry.objectOrEmpty(type));
+        DescriptorReader module = entry.objectOrEmpty(type);
+        List<String> uses = module.optional(USES, ValueParsers.TEXTS).orElse(List.of());
+        return new DeclaredModule(module.path(), providerFor(entry.path(), type).read(module.without(USES)),
+                infrastructure.named(module.path() + "." + USES, uses));
     }
 
     private static ModuleDescriptorProvider providerFor(String path, String type) {

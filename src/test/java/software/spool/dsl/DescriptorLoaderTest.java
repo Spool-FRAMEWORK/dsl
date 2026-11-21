@@ -19,7 +19,7 @@ class DescriptorLoaderTest {
     void load_withoutProfile_ignoresTheProfiles() throws IOException {
         SpoolNodeDescriptor node = loader.load(PROFILES);
 
-        assertThat(node.infrastructure().eventBus().type()).isEqualTo("IN_MEMORY");
+        assertThat(node.infrastructure().piece("eventBus").orElseThrow().type()).isEqualTo("IN_MEMORY");
         assertThat(node.modules()).hasSize(2);
     }
 
@@ -27,11 +27,11 @@ class DescriptorLoaderTest {
     void load_withProfile_overridesOnlyTheKeysItDeclares() throws IOException {
         SpoolNodeDescriptor node = loader.load(PROFILES, "production");
 
-        assertThat(node.infrastructure().eventBus().type()).isEqualTo("KAFKA");
-        assertThat(node.infrastructure().eventBus().configuration())
+        assertThat(node.infrastructure().piece("eventBus").orElseThrow().type()).isEqualTo("KAFKA");
+        assertThat(node.infrastructure().piece("eventBus").orElseThrow().configuration())
                 .containsEntry("bootstrapServers", "localhost:9092");
-        assertThat(node.infrastructure().inbox().type()).isEqualTo("FILE_SYSTEM");
-        assertThat(node.infrastructure().inbox().configuration())
+        assertThat(node.infrastructure().piece("inbox").orElseThrow().type()).isEqualTo("FILE_SYSTEM");
+        assertThat(node.infrastructure().piece("inbox").orElseThrow().configuration())
                 .containsEntry("path", "target/spool-test/inbox");
         assertThat(node.modules()).hasSize(2);
     }
@@ -72,7 +72,7 @@ class DescriptorLoaderTest {
         SpoolNodeDescriptor node = withEnvironment.load(PROFILES);
 
         assertThat(DescriptorLoader.PROFILE_VARIABLE).isEqualTo("SPOOL_PROFILE");
-        assertThat(node.infrastructure().eventBus().type()).isEqualTo("KAFKA");
+        assertThat(node.infrastructure().piece("eventBus").orElseThrow().type()).isEqualTo("KAFKA");
     }
 
     @Test
@@ -82,7 +82,7 @@ class DescriptorLoaderTest {
 
         SpoolNodeDescriptor node = withEnvironment.load(PROFILES, "single");
 
-        assertThat(node.infrastructure().eventBus().type()).isEqualTo("IN_MEMORY");
+        assertThat(node.infrastructure().piece("eventBus").orElseThrow().type()).isEqualTo("IN_MEMORY");
         assertThat(node.modules()).hasSize(1);
     }
 
@@ -95,21 +95,21 @@ class DescriptorLoaderTest {
     }
 
     @Test
-    void load_unknownKeyInTheInfrastructure_failsWithItsPath() {
+    void load_unknownKeyInAPiece_failsWithItsPath() {
         String descriptor = "/descriptors/compose/misspelt-key.yaml";
 
         assertThatThrownBy(() -> loader.load(descriptor))
                 .isInstanceOf(IOException.class)
                 .hasMessageStartingWith("Invalid descriptor " + descriptor
-                        + ": infrastructure.evenBus is not a known key. Known keys: watchdog, eventBus");
+                        + ": infrastructure.eventBus.tipe is not a known key. Known keys: kind, type, configuration");
     }
 
     @Test
     void load_withInclude_combinesTheKeysOfTheIncludedFile() throws IOException {
         SpoolNodeDescriptor node = loader.load("/descriptors/compose/with-include.yaml");
 
-        assertThat(node.infrastructure().eventBus().type()).isEqualTo("IN_MEMORY");
-        assertThat(node.infrastructure().inbox().configuration())
+        assertThat(node.infrastructure().piece("eventBus").orElseThrow().type()).isEqualTo("IN_MEMORY");
+        assertThat(node.infrastructure().piece("inbox").orElseThrow().configuration())
                 .containsEntry("path", "target/spool-test/inbox");
         assertThat(node.modules()).singleElement()
                 .isInstanceOfSatisfying(IngesterDescriptor.class,
@@ -120,8 +120,8 @@ class DescriptorLoaderTest {
     void load_withInclude_theIncludingFileWins() throws IOException {
         SpoolNodeDescriptor node = loader.load("/descriptors/compose/overrides-include.yaml");
 
-        assertThat(node.infrastructure().eventBus().type()).isEqualTo("KAFKA");
-        assertThat(node.infrastructure().inbox().type()).isEqualTo("FILE_SYSTEM");
+        assertThat(node.infrastructure().piece("eventBus").orElseThrow().type()).isEqualTo("KAFKA");
+        assertThat(node.infrastructure().piece("inbox").orElseThrow().type()).isEqualTo("FILE_SYSTEM");
     }
 
     @Test

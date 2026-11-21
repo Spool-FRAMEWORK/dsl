@@ -84,6 +84,13 @@ public final class DescriptorReader {
         return this;
     }
 
+    /** The same object without a key, for a key that is read apart from the rest. */
+    public DescriptorReader without(String key) {
+        Map<Object, Object> rest = new LinkedHashMap<>(values);
+        rest.remove(key);
+        return new DescriptorReader(path, rest);
+    }
+
     /** The value of a key as it is in the descriptor, or nothing when the key is missing. */
     public Optional<Object> value(String key) {
         return Optional.ofNullable(values.get(key));

@@ -1,7 +1,9 @@
 infrastructure:
   eventBus:
+    kind: EVENT_BUS
     type: IN_MEMORY
   inbox:
+    kind: INBOX
     type: IN_MEMORY
 
 modules:

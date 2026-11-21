@@ -39,7 +39,7 @@ Spool.yaml
 ▼
 SpoolNodeDSL.fromDescriptor(path)  →  SpoolNode
 │
-├── InfrastructureDescriptor  →  eventBus · inbox · dataLake · quarantineRepository · watchdog
+├── infrastructure  →  named pieces: EVENT_BUS · INBOX · DATA_LAKE · DATA_MART · QUARANTINE_REPOSITORY
 │
 └── SpoolModuleDescriptor[]
     ├── CrawlerDescriptor   →  CrawlerBuilderFactory  →  Crawler
@@ -47,7 +47,7 @@ SpoolNodeDSL.fromDescriptor(path)  →  SpoolNode
     └── IngesterDescriptor  →  IngesterBuilderFactory →  Ingester
 ```
 
-Each component names its adapter with `type`, and the adapter is found among the plugins registered through the Java
+Each piece of the infrastructure names its adapter with `type`, and the adapter is found among the plugins registered through the Java
 SPI (`spool-infrastructure`). The whole descriptor is checked before any module starts: a wrong key or value stops
 the node and the error says its path.
 
@@ -84,29 +84,33 @@ of `develop` is on GitHub Packages:
 ### 1. Create `src/main/resources/Spool.yaml`
 
 ```yaml
-infrastructure:
-  watchdog: "http://localhost:8090"
+watchdog: "http://localhost:8090"
 
-  eventBus:
+infrastructure:
+  bus:
+    kind: EVENT_BUS
     type: KAFKA
     configuration:
       bootstrap.servers: "localhost:9092"
 
   inbox:
+    kind: INBOX
     type: S3
     configuration:
       bucket: spool-inbox
       region: us-east-1
       endpoint: http://localhost:4566
 
-  dataLake:
+  lake:
+    kind: DATA_LAKE
     type: S3
     configuration:
       bucket: spool-datalake
       region: us-east-1
       endpoint: http://localhost:4566
 
-  quarantineRepository:
+  quarantine:
+    kind: QUARANTINE_REPOSITORY
     type: FILE_SYSTEM
     configuration:
       path: /data/spool/quarantine
@@ -168,20 +172,59 @@ SpoolRuntime.builder()
 
 ### Infrastructure
 
-Every component has a `type`, the name of its plugin, and a `configuration` with the keys that plugin reads. The
-types and their keys are in [Infrastructure Options](#infrastructure-options).
+`infrastructure` is a map of pieces
+([ADR-018](https://linear.app/javier-castilla/document/adr-018-la-infraestructura-se-declara-como-piezas-con-nombre-y-cada-31e03aba25db)).
+The key of each piece is a name of your choice, and the piece says what it is with `kind`, which plugin builds it
+with `type`, and that plugin's keys in `configuration`. The types and their keys are in
+[Infrastructure Options](#infrastructure-options).
 
-| Key | Description |
+| Kind | What it is |
 |---|---|
-| `watchdog` | URL of the watchdog the modules send their heartbeat to. Optional. |
-| `eventBus` | The bus the modules publish and consume events on. |
-| `inbox` | Where the crawler stores what it captures and the janitor looks after it. |
-| `dataLake` | Where the ingester writes bronze. The mounter reads it and writes silver into it, and the janitor writes back to it what was quarantined from bronze. |
-| `dataMart` | Where mounters to gold write. Only they need it. |
-| `quarantineRepository` | Where the janitor and the mounters to silver keep what is in quarantine (see [Quarantine](#quarantine)). |
+| `EVENT_BUS` | The bus the modules publish and consume events on. |
+| `INBOX` | Where the crawler stores what it captures and the janitor looks after it. |
+| `DATA_LAKE` | Where the ingester writes bronze. The mounter reads it and writes silver into it, and the janitor writes back to it what was quarantined from bronze. |
+| `DATA_MART` | Where mounters to gold write. Only they need it. |
+| `QUARANTINE_REPOSITORY` | Where the janitor and the mounters to silver keep what is in quarantine (see [Quarantine](#quarantine)). |
 
-A module only needs the components it uses: a node with only an ingester needs no inbox. A missing component that a
-module needs stops the node with the name of the module.
+A module takes the only piece of each kind it needs, so with one piece of each kind there is nothing else to write.
+With several pieces of a kind, each module that needs that kind names its piece in `uses`:
+
+```yaml
+infrastructure:
+  bus: {kind: EVENT_BUS, type: IN_MEMORY}
+  lake: {kind: DATA_LAKE, type: FILE_SYSTEM, configuration: {path: /data/lake}}
+  gold: {kind: DATA_MART, type: FILE_SYSTEM, configuration: {path: /data/gold}}
+  reports: {kind: DATA_MART, type: FILE_SYSTEM, configuration: {path: /data/reports}}
+
+modules:
+  - mounter:
+      id: gold-total
+      uses: [gold]
+      type: POLL
+      schedule: {every: 1h}
+      mode: AGGREGATION
+      read: {partitions: ["source=payments"]}
+      write: {dataMart: payments-total, partitioning: {type: SAME_AS_SOURCE}}
+  - mounter:
+      id: reports-total
+      uses: [reports]
+      type: POLL
+      schedule: {every: 1d}
+      mode: AGGREGATION
+      read: {partitions: ["source=payments"]}
+      write: {dataMart: payments-report, partitioning: {type: SAME_AS_SOURCE}}
+```
+
+- A module that needs a kind with several pieces and names none stops the load, listing the pieces of that kind.
+  So does a name in `uses` that is not declared, two pieces of the same kind in one `uses`, and a piece of a kind
+  the module does not use.
+- A module only needs the pieces it uses: a node with only an ingester needs no inbox. A missing piece stops the node
+  with the name of the module.
+- Modules on different buses do not see each other's events. The crawler and the janitor of an inbox, and the
+  ingester and the mounters of a data lake, have to use the same bus.
+- `watchdog`, at the root of the descriptor, is the URL the modules send their heartbeat to. It is optional.
+- A descriptor of the previous format, with a fixed key per component (`eventBus:`, `inbox:`...), stops the load
+  saying which `kind` to add to each one, and `infrastructure.watchdog` says to move it to the root.
 
 ---
 
@@ -324,6 +367,7 @@ An envelope goes to quarantine when the ingester finds that its payload fails a 
 ```yaml
 infrastructure:
   quarantineRepository:
+    kind: QUARANTINE_REPOSITORY
     type: FILE_SYSTEM
     configuration:
       path: /data/spool/quarantine   # one folder per status, one JSON file per envelope named after its key
@@ -338,7 +382,7 @@ Two settings in the janitor configuration:
 | `quarantineTtl` | Removes from the inbox what has been in `QUARANTINED` for longer. Its record stays pending. |
 | `quarantineRetention` | Deletes the records resolved longer ago. Pending records are never deleted. Without it, resolved records are kept. |
 
-A record the mounter rejected stays in bronze no longer: the mounter removes it from its bronze partition after keeping the record. Resolving it writes the envelope back to that partition (or the corrected one, under its new key) and publishes `EnvelopePersisted` so it is mounted again; the inbox is not touched. The janitor writes to the `infrastructure.dataLake`; without one, those records are skipped.
+A record the mounter rejected stays in bronze no longer: the mounter removes it from its bronze partition after keeping the record. Resolving it writes the envelope back to that partition (or the corrected one, under its new key) and publishes `EnvelopePersisted` so it is mounted again; the inbox is not touched. The janitor writes to the `DATA_LAKE` piece; without one, those records are skipped.
 
 The old `infrastructure.quarantineStore` key is no longer accepted.
 
@@ -367,7 +411,7 @@ Consumes events from the bus and writes envelopes to the data lake.
 ### Mounter
 
 Fills one data mart from a partition of the data lake. A `TRANSFORMATION` mount reads bronze and writes silver in the
-`dataLake`; an `AGGREGATION` mount reads silver and writes gold in the `dataMart`.
+data lake; an `AGGREGATION` mount reads silver and writes gold in the data mart.
 
 ```yaml
 - mounter:
@@ -393,10 +437,10 @@ Fills one data mart from a partition of the data lake. A `TRANSFORMATION` mount 
 | `validate` | Validates on read what is promoted to silver, with the validators of each source. Only for `TRANSFORMATION`. `false` by default. |
 | `aggregator` | Full name of a class that implements `MountAggregator` and has a public constructor without arguments. Without it, records are copied as they are. |
 | `read.partitions` | The partition to read, written as a path. A list, with a single partition for now. |
-| `write.dataMart` | The data mart the mounter fills. |
+| `write.dataMart` | The data set the mounter fills, inside its data lake or its data mart. It is not the name of a piece: that goes in `uses`. |
 | `write.partitioning.type` | `SAME_AS_SOURCE` writes each record in the partition it comes with: the one it had in the data lake, or the one the aggregator gave it. `ATTRIBUTES` builds it from `write.partitioning.attributes`, such as `payload.country`. |
 
-A mounter to silver always has a quarantine, so it needs `infrastructure.quarantineRepository`. A record that fails
+A mounter to silver always has a quarantine, so it needs a `QUARANTINE_REPOSITORY` piece. A record that fails
 validation, or that lacks a partition attribute, goes to it and is removed from bronze. Writing silver needs a data
 lake type that mounters can write to: `FILE_SYSTEM` today.
 
@@ -423,6 +467,7 @@ authentication:
 
 infrastructure:
   eventBus:
+    kind: EVENT_BUS
     type: IN_MEMORY
 ```
 
@@ -442,6 +487,7 @@ A descriptor can take part of its keys from other files, and can change some of 
 # shared/infrastructure.yaml
 infrastructure:
   eventBus:
+    kind: EVENT_BUS
     type: IN_MEMORY
 ```
 
@@ -453,6 +499,7 @@ profiles:
   production:
     infrastructure:
       eventBus:
+        kind: EVENT_BUS
         type: KAFKA
         configuration:
           bootstrap.servers: "kafka:9092"
@@ -489,12 +536,15 @@ profiles:
 
 infrastructure:
   eventBus:
+    kind: EVENT_BUS
     type: IN_MEMORY
   inbox:
+    kind: INBOX
     type: FILE_SYSTEM
     configuration:
       path: ${inbox}
   dataLake:
+    kind: DATA_LAKE
     type: S3
     configuration:
       bucket: ${env:SPOOL_BUCKET}
@@ -516,17 +566,17 @@ infrastructure:
 
 ## Infrastructure Options
 
-| Component | Types | Configuration |
+| Kind | Types | Configuration |
 |---|---|---|
-| `eventBus` | `IN_MEMORY` | none |
+| `EVENT_BUS` | `IN_MEMORY` | none |
 | | `KAFKA` | `bootstrap.servers`, and `subscriber.id` optional |
-| `inbox` | `FILE_SYSTEM` | `path` |
+| `INBOX` | `FILE_SYSTEM` | `path` |
 | | `S3` | `bucket`, `region`, `endpoint` |
-| `dataLake` | `FILE_SYSTEM` | `path` |
+| `DATA_LAKE` | `FILE_SYSTEM` | `path` |
 | | `S3` | `bucket`, `region`, `endpoint` |
-| `dataMart` | `FILE_SYSTEM` | `path` |
+| `DATA_MART` | `FILE_SYSTEM` | `path` |
 | | `RAW_FILE_SYSTEM` | `path` |
-| `quarantineRepository` | `FILE_SYSTEM` | `path` |
+| `QUARANTINE_REPOSITORY` | `FILE_SYSTEM` | `path` |
 
 Every port, its types and their keys are in the [catalogue of adapters](https://github.com/Spool-FRAMEWORK/infrastructure#available-adapters)
 of `spool-infrastructure`. There is no relational backend (no PostgreSQL, no JDBC).

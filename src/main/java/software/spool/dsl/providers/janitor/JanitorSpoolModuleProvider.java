@@ -3,6 +3,7 @@ package software.spool.dsl.providers.janitor;
 import software.spool.core.model.spool.SpoolModule;
 import software.spool.dsl.InvalidDescriptorException;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
+import software.spool.dsl.descriptors.infrastructure.InfrastructureKind;
 import software.spool.dsl.descriptors.module.ScheduleDescriptor;
 import software.spool.dsl.descriptors.module.SpoolModuleDescriptor;
 import software.spool.dsl.descriptors.module.janitor.JanitorDescriptor;
@@ -56,7 +57,7 @@ public class JanitorSpoolModuleProvider implements SpoolModuleProvider {
         janitor.quarantineTtl().ifPresent(ttl -> builder.withMillisecondsQuarantineTtl(intMillis("quarantineTtl", ttl)));
         janitor.quarantineRetention().ifPresent(retention -> builder.withMillisecondsQuarantineRetention(retention.toMillis()));
         janitor.maxInboxUpdateAttempts().ifPresent(builder::withMaxInboxUpdateAttempts);
-        if (infrastructure.dataLake() != null) {
+        if (infrastructure.find(InfrastructureKind.DATA_LAKE).isPresent()) {
             builder.rewriteDataLakeWith(InfrastructurePluginFactory.dataLakeWriter(infrastructure));
         }
         return builder.create();

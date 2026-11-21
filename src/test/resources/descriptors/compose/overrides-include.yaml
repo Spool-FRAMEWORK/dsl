@@ -3,6 +3,7 @@ include:
 
 infrastructure:
   eventBus:
+    kind: EVENT_BUS
     type: KAFKA
 
 modules: []

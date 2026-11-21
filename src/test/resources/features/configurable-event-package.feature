@@ -8,8 +8,8 @@ Feature: The descriptor says in which package the event classes of a crawler are
     Given the descriptor:
       """
       infrastructure:
-        eventBus: {type: IN_MEMORY}
-        inbox: {type: FILE_SYSTEM, configuration: {path: target/spool-test/event-package/inbox}}
+        eventBus: {kind: EVENT_BUS, type: IN_MEMORY}
+        inbox: {kind: INBOX, type: FILE_SYSTEM, configuration: {path: target/spool-test/event-package/inbox}}
       modules:
         - crawler:
             type: POLL
@@ -27,8 +27,8 @@ Feature: The descriptor says in which package the event classes of a crawler are
     Given the descriptor:
       """
       infrastructure:
-        eventBus: {type: IN_MEMORY}
-        inbox: {type: FILE_SYSTEM, configuration: {path: target/spool-test/event-package/inbox}}
+        eventBus: {kind: EVENT_BUS, type: IN_MEMORY}
+        inbox: {kind: INBOX, type: FILE_SYSTEM, configuration: {path: target/spool-test/event-package/inbox}}
       modules:
         - crawler:
             type: POLL
@@ -47,8 +47,8 @@ Feature: The descriptor says in which package the event classes of a crawler are
     Given the descriptor:
       """
       infrastructure:
-        eventBus: {type: IN_MEMORY}
-        inbox: {type: FILE_SYSTEM, configuration: {path: target/spool-test/event-package/inbox}}
+        eventBus: {kind: EVENT_BUS, type: IN_MEMORY}
+        inbox: {kind: INBOX, type: FILE_SYSTEM, configuration: {path: target/spool-test/event-package/inbox}}
       modules:
         - crawler:
             type: POLL
@@ -68,8 +68,8 @@ Feature: The descriptor says in which package the event classes of a crawler are
     Given the descriptor:
       """
       infrastructure:
-        eventBus: {type: IN_MEMORY}
-        inbox: {type: FILE_SYSTEM, configuration: {path: target/spool-test/event-package/inbox}}
+        eventBus: {kind: EVENT_BUS, type: IN_MEMORY}
+        inbox: {kind: INBOX, type: FILE_SYSTEM, configuration: {path: target/spool-test/event-package/inbox}}
       modules:
         - crawler:
             type: POLL

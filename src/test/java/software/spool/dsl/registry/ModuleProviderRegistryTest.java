@@ -1,5 +1,6 @@
 package software.spool.dsl.registry;
 
+import software.spool.dsl.Pieces;
 import org.junit.jupiter.api.Test;
 import software.spool.core.port.serde.NamingConvention;
 import software.spool.dsl.InvalidDescriptorException;
@@ -20,8 +21,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class ModuleProviderRegistryTest {
 
-    private static final InfrastructureComponentDescriptor BUS = new InfrastructureComponentDescriptor("IN_MEMORY", Map.of());
-    private static final InfrastructureDescriptor INFRA = new InfrastructureDescriptor(null, BUS, BUS, BUS);
+    private static final InfrastructureDescriptor INFRA = Pieces.infrastructure(Pieces.eventBus("IN_MEMORY"),
+        Pieces.inbox("IN_MEMORY", Map.of()), Pieces.dataLake("IN_MEMORY", Map.of()));
 
     @Test
     void build_aCrawlerOfATypeNobodySupports_namesTheModuleAndTheSupportedTypes() {

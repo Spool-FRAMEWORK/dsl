@@ -6,13 +6,15 @@ import software.spool.dsl.descriptors.SpoolNodeDescriptor;
 import software.spool.dsl.descriptors.module.crawler.CrawlerDescriptor;
 import software.spool.dsl.descriptors.module.crawler.ErrorRouterDescriptor;
 import software.spool.dsl.descriptors.module.ingester.IngesterDescriptor;
-import software.spool.dsl.yaml.raw.RawComponentDescriptor;
+import software.spool.dsl.descriptors.infrastructure.InfrastructureKind;
+import software.spool.dsl.yaml.raw.RawPieceDescriptor;
 import software.spool.dsl.yaml.raw.RawInfrastructureDescriptor;
 import software.spool.dsl.yaml.raw.RawSpoolNodeDescriptor;
 
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -190,14 +192,14 @@ class DescriptorMapperTest {
 
     @Test
     void map_infrastructureWithoutDataLake_isAcceptedBecauseOnlyTheIngesterNeedsIt() {
-        RawComponentDescriptor component = new RawComponentDescriptor("IN_MEMORY", null);
-        RawSpoolNodeDescriptor raw = new RawSpoolNodeDescriptor(
-            new RawInfrastructureDescriptor(null, component, component, null), List.of());
+        RawSpoolNodeDescriptor raw = new RawSpoolNodeDescriptor(new RawInfrastructureDescriptor(Map.of(
+            "bus", piece(InfrastructureKind.EVENT_BUS, "IN_MEMORY"),
+            "inbox", piece(InfrastructureKind.INBOX, "IN_MEMORY"))), List.of());
 
         SpoolNodeDescriptor result = DescriptorMapper.map(raw);
 
-        assertThat(result.infrastructure().dataLake()).isNull();
-        assertThat(result.infrastructure().inbox().type()).isEqualTo("IN_MEMORY");
+        assertThat(result.infrastructure().ofKind(InfrastructureKind.DATA_LAKE)).isEmpty();
+        assertThat(result.infrastructure().piece("inbox").orElseThrow().type()).isEqualTo("IN_MEMORY");
     }
 
     @Test
@@ -209,9 +211,8 @@ class DescriptorMapperTest {
 
     @Test
     void map_infrastructureComponentWithoutType_namesTheKey() {
-        RawComponentDescriptor component = new RawComponentDescriptor("IN_MEMORY", null);
-        RawSpoolNodeDescriptor raw = new RawSpoolNodeDescriptor(
-            new RawInfrastructureDescriptor(null, component, new RawComponentDescriptor(null, null), component), List.of());
+        RawSpoolNodeDescriptor raw = new RawSpoolNodeDescriptor(new RawInfrastructureDescriptor(Map.of(
+            "inbox", piece(InfrastructureKind.INBOX, null))), List.of());
 
         assertThatThrownBy(() -> DescriptorMapper.map(raw)).hasMessage("infrastructure.inbox.type is required");
     }
@@ -223,7 +224,13 @@ class DescriptorMapperTest {
     }
 
     private static RawInfrastructureDescriptor anyInfra() {
-        RawComponentDescriptor component = new RawComponentDescriptor("in-memory", null);
-        return new RawInfrastructureDescriptor(null, component, component, component);
+        return new RawInfrastructureDescriptor(Map.of(
+            "bus", piece(InfrastructureKind.EVENT_BUS, "in-memory"),
+            "inbox", piece(InfrastructureKind.INBOX, "in-memory"),
+            "lake", piece(InfrastructureKind.DATA_LAKE, "in-memory")));
+    }
+
+    private static RawPieceDescriptor piece(InfrastructureKind kind, String type) {
+        return new RawPieceDescriptor(Optional.of(kind), type, null);
     }
 }
