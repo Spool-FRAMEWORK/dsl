@@ -153,7 +153,7 @@ public class MounterSteps {
     public void theNodeIsStartedFromTheDescriptor() throws IOException {
         descriptor.load(Optional.empty());
         if (descriptor.hasLoaded()) {
-            silverFilesBeforeStart = filesUnder(silver()).size();
+            silverFilesBeforeStart = dataLake == null ? 0 : filesUnder(silver()).size();
             node = Optional.of(startedNode(descriptor.loaded()));
         }
     }

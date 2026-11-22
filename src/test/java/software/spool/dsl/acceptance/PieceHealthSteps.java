@@ -13,9 +13,12 @@ import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -23,6 +26,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class PieceHealthSteps {
     private static final String HEALTH_PATH = "/spool/health";
     private static final String UNREADABLE_RECORD = "unreadable-record.json";
+    private static final Pattern CIRCUIT_OPEN_UNTIL = Pattern.compile("circuit open until (\\S+?)(?: |$)");
+    private static final Duration CLOCK_MARGIN = Duration.ofSeconds(5);
     private static final Duration WAIT_FOR_A_MODULE = Duration.ofSeconds(10);
     private static final Duration POLL_INTERVAL = Duration.ofMillis(200);
 
@@ -75,6 +80,14 @@ public class PieceHealthSteps {
     @Then("the reason of the piece {string} names the record that cannot be read")
     public void theReasonOfThePieceNamesTheRecordThatCannotBeRead(String piece) {
         assertThat(reasonOf(piece)).contains(UNREADABLE_RECORD);
+    }
+
+    @Then("the reason of the piece {string} says its circuit is open until a time {int}s ahead")
+    public void theReasonSaysItsCircuitIsOpenUntil(String piece, int seconds) {
+        Matcher openUntil = CIRCUIT_OPEN_UNTIL.matcher(reasonOf(piece));
+        assertThat(openUntil.find()).as("the reason of %s says until when its circuit is open", piece).isTrue();
+        assertThat(Instant.parse(openUntil.group(1)))
+                .isBetween(Instant.now().plusSeconds(seconds).minus(CLOCK_MARGIN), Instant.now().plusSeconds(seconds));
     }
 
     private String reasonOf(String piece) {
