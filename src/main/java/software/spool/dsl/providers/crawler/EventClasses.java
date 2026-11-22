@@ -33,7 +33,7 @@ final class EventClasses {
 
     private Class<?> find(String path, String qualifiedName, String name) {
         try {
-            return Class.forName(qualifiedName);
+            return Class.forName(qualifiedName, false, Thread.currentThread().getContextClassLoader());
         } catch (ClassNotFoundException missing) {
             throw new InvalidDescriptorException(path,
                     "names a class that is not in package '" + eventPackage + "': '" + name + "'");
