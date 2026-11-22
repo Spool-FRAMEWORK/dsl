@@ -9,6 +9,7 @@ import software.spool.dsl.descriptors.module.SpoolModuleDescriptor;
 import software.spool.dsl.descriptors.module.janitor.JanitorDescriptor;
 import software.spool.dsl.descriptors.module.janitor.QuarantineServerDescriptor;
 import software.spool.dsl.providers.authentication.RequestAuthenticators;
+import software.spool.dsl.providers.mounter.QuarantinedResultWriters;
 import software.spool.dsl.registry.ModuleProviderRegistry;
 import software.spool.janitor.api.quarantine.QuarantinePageSizes;
 import software.spool.janitor.api.quarantine.QuarantineRoles;
@@ -20,6 +21,7 @@ import software.spool.infrastructure.spi.SpoolPlugin;
 import software.spool.infrastructure.spi.provider.PluginConfiguration;
 
 import java.time.Duration;
+import java.util.List;
 
 @SpoolPlugin(SpoolModuleProvider.class)
 public class JanitorSpoolModuleProvider implements SpoolModuleProvider {
@@ -68,6 +70,9 @@ public class JanitorSpoolModuleProvider implements SpoolModuleProvider {
         if (infrastructure.find(InfrastructureKind.DATA_LAKE).isPresent()) {
             builder.rewriteDataLakeWith(InfrastructurePluginFactory.dataLakeWriter(infrastructure));
         }
+        configuration.get(ModuleProviderRegistry.QUARANTINED_RESULT_WRITERS, QuarantinedResultWriters.class)
+                .map(QuarantinedResultWriters::create).orElseGet(List::of)
+                .forEach(builder::rewriteDataMartWith);
         janitor.quarantineServer().ifPresent(server -> serveQuarantine(builder, janitor.id(), server,
                 configuration.get(ModuleProviderRegistry.AUTHENTICATION, RequestAuthenticators.class).orElseGet(RequestAuthenticators::none)));
         return builder.create();

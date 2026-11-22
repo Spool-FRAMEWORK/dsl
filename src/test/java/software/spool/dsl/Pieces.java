@@ -28,6 +28,10 @@ public final class Pieces {
         return new InfrastructureComponentDescriptor("dataLake", InfrastructureKind.DATA_LAKE, type, configuration);
     }
 
+    public static InfrastructureComponentDescriptor dataMart(String type, Map<String, String> configuration) {
+        return new InfrastructureComponentDescriptor("dataMart", InfrastructureKind.DATA_MART, type, configuration);
+    }
+
     public static InfrastructureComponentDescriptor quarantineRepository(String type, Map<String, String> configuration) {
         return new InfrastructureComponentDescriptor("quarantineRepository", InfrastructureKind.QUARANTINE_REPOSITORY,
                 type, configuration);

@@ -1,5 +1,6 @@
 package software.spool.dsl.registry;
 
+import software.spool.dsl.providers.mounter.QuarantinedResultWriters;
 import software.spool.dsl.providers.authentication.RequestAuthenticators;
 import software.spool.core.model.spool.SpoolModule;
 import software.spool.dsl.InvalidDescriptorException;
@@ -15,6 +16,7 @@ import java.util.stream.Collectors;
 public final class ModuleProviderRegistry {
 
     public static final String AUTHENTICATION = "authentication";
+    public static final String QUARANTINED_RESULT_WRITERS = "quarantinedResultWriters";
 
     private ModuleProviderRegistry() {}
 
@@ -31,10 +33,23 @@ public final class ModuleProviderRegistry {
     public static SpoolModule build(SpoolModuleDescriptor descriptor,
                                     InfrastructureDescriptor infrastructure,
                                     RequestAuthenticators authentication) {
+        return build(descriptor, infrastructure, authentication, QuarantinedResultWriters.none());
+    }
+
+    /**
+     * Builds a module as {@link #build(SpoolModuleDescriptor, InfrastructureDescriptor, RequestAuthenticators)} does,
+     * also giving its provider, in the context key {@value #QUARANTINED_RESULT_WRITERS}, the writers that put the
+     * quarantined results of the mounters of its node back in their data marts.
+     */
+    public static SpoolModule build(SpoolModuleDescriptor descriptor,
+                                    InfrastructureDescriptor infrastructure,
+                                    RequestAuthenticators authentication,
+                                    QuarantinedResultWriters resultWriters) {
         PluginConfiguration config = PluginConfiguration.builder()
                 .with("descriptor", descriptor)
                 .with("infrastructure", infrastructure)
                 .with(AUTHENTICATION, authentication)
+                .with(QUARANTINED_RESULT_WRITERS, resultWriters)
                 .build();
 
         try {

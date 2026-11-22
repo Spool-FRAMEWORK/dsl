@@ -3,7 +3,9 @@ package software.spool.dsl.providers.mounter;
 import software.spool.core.model.spool.SpoolModule;
 import software.spool.core.utils.polling.PollingPolicy;
 import software.spool.core.utils.polling.ThreadedPollingScheduler;
+import software.spool.core.port.quarantine.QuarantinedResultWriter;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
+import software.spool.dsl.descriptors.infrastructure.InfrastructureKind;
 import software.spool.dsl.descriptors.module.ScheduleDescriptor;
 import software.spool.dsl.descriptors.module.SpoolModuleDescriptor;
 import software.spool.dsl.descriptors.module.mounter.AggregatorClass;
@@ -18,6 +20,7 @@ import software.spool.mounter.api.MountMode;
 import software.spool.mounter.api.adapter.AlwaysClosedWindowPolicy;
 import software.spool.mounter.api.adapter.AttributesPartitioning;
 import software.spool.mounter.api.adapter.NoOpMountCheckpoint;
+import software.spool.mounter.api.adapter.PartitioningQuarantinedResultWriter;
 import software.spool.mounter.api.adapter.PassThroughMountAggregator;
 import software.spool.mounter.api.adapter.SameAsSourcePartitioning;
 import software.spool.mounter.api.builder.CheckpointFacet;
@@ -94,17 +97,32 @@ public class MounterSpoolModuleProvider implements SpoolModuleProvider {
 
     private static void configure(MounterDescriptor mounter, InfrastructureDescriptor infrastructure, MountFacet<?> mount,
                                   CheckpointFacet<?> checkpoint, QuarantineFacet<?> quarantine, ValidationFacet<?> validation) {
-        mount.onTarget(new MountTarget(mounter.write().dataMart(), mounter.read().partition(), mounter.mode(), null, null))
+        mount.onTarget(targetOf(mounter))
                 .writingWith(writer(mounter, infrastructure))
                 .partitioningWith(partitioning(mounter.write().partitioning()));
         checkpoint.windowPolicy(new AlwaysClosedWindowPolicy()).checkpoint(new NoOpMountCheckpoint());
         if (mounter.mode() == MountMode.TRANSFORMATION) {
             quarantine.in(InfrastructurePluginFactory.quarantineRepository(infrastructure))
                     .removingFromDataLakeWith(InfrastructurePluginFactory.dataLakeEnvelopeRemover(infrastructure));
+        } else if (infrastructure.find(InfrastructureKind.QUARANTINE_REPOSITORY).isPresent()) {
+            quarantine.in(InfrastructurePluginFactory.quarantineRepository(infrastructure));
         }
         if (mounter.validate()) {
             validation.enabled();
         }
+    }
+
+    /**
+     * Writes the quarantined results of a mounter back to its data mart, with the writer and the partitioning the
+     * mounter writes with.
+     */
+    public static QuarantinedResultWriter quarantinedResultWriter(MounterDescriptor mounter, InfrastructureDescriptor infrastructure) {
+        return new PartitioningQuarantinedResultWriter(targetOf(mounter), partitioning(mounter.write().partitioning()),
+                writer(mounter, infrastructure));
+    }
+
+    private static MountTarget targetOf(MounterDescriptor mounter) {
+        return new MountTarget(mounter.write().dataMart(), mounter.read().partition(), mounter.mode(), null, null);
     }
 
     private static DataMartWriter writer(MounterDescriptor mounter, InfrastructureDescriptor infrastructure) {
