@@ -40,7 +40,7 @@ Spool.yaml
 ▼
 SpoolNodeDSL.fromDescriptor(path)  →  SpoolNode
 │
-├── infrastructure  →  named pieces: EVENT_BUS · INBOX · DATA_LAKE · DATA_MART · QUARANTINE_REPOSITORY · AGGREGATE_METADATA
+├── infrastructure  →  named pieces: EVENT_BUS · INBOX · DATA_LAKE · DATA_MART · QUARANTINE_REPOSITORY · AGGREGATE_METADATA · ENVELOPE_HEADERS
 │
 └── SpoolModuleDescriptor[]
     ├── CrawlerDescriptor   →  CrawlerBuilderFactory  →  Crawler
@@ -217,6 +217,7 @@ with `type`, and that plugin's keys in `configuration`. The types and their keys
 | `DATA_MART` | Where mounters to gold write. Only they need it. |
 | `QUARANTINE_REPOSITORY` | Where the janitor and the mounters to silver keep what is in quarantine (see [Quarantine](#quarantine)). |
 | `AGGREGATE_METADATA` | Where a mounter to gold with an incremental aggregator keeps the state and the sources of each aggregate (see [Aggregating incrementally](#aggregating-incrementally)). It is optional. |
+| `ENVELOPE_HEADERS` | Where the data lake keeps the header of each envelope of bronze, to find envelopes without reading the data lake (see [A store of envelope headers](#a-store-of-envelope-headers)). It is optional. |
 
 A module takes the only piece of each kind it needs, so with one piece of each kind there is nothing else to write.
 With several pieces of a kind, each module that needs that kind names its piece in `uses`:
@@ -651,6 +652,35 @@ infrastructure:
   mount, stops the load.
 - Without the piece, the mounter aggregates everything in every round, as any other.
 
+### A store of envelope headers
+
+With an `ENVELOPE_HEADERS` piece, the data lake keeps the header of each envelope of bronze (its key, metadata, media
+type, status, retries and dates) in a store of its own as well, so envelopes can be found without reading the data lake
+([ADR-023](https://linear.app/javier-castilla/document/adr-023-el-data-lake-guarda-el-payload-tal-cual-y-los-metadatos-del-735a53af507b)):
+
+```yaml
+infrastructure:
+  bus: {kind: EVENT_BUS, type: IN_MEMORY}
+  inbox: {kind: INBOX, type: FILE_SYSTEM, configuration: {path: /data/inbox}}
+  lake: {kind: DATA_LAKE, type: FILE_SYSTEM, configuration: {path: /data/lake}}
+  headers:
+    kind: ENVELOPE_HEADERS
+    type: POSTGRESQL
+    configuration:
+      url: jdbc:postgresql://localhost:5432/spool
+      user: spool
+      password: ${env:SPOOL_HEADERS_PASSWORD}
+```
+
+- The ingester, and the janitor when it writes back to bronze what was quarantined from it, keep the header once the
+  envelope is in the data lake. The header is the one the data lake keeps next to the payload.
+- A mounter to silver that quarantines a record removes its header from the store before removing the envelope from
+  bronze.
+- An envelope whose header cannot be kept stays in the data lake but does not count as written, and the failure is
+  logged.
+- The `POSTGRESQL` type creates its table at startup if it is missing.
+- Without the piece, the data lake works as before.
+
 ---
 
 ### Authentication
@@ -786,9 +816,10 @@ infrastructure:
 | `QUARANTINE_REPOSITORY` | `FILE_SYSTEM` | `path` |
 | `AGGREGATE_METADATA` | `FILE_SYSTEM` | `path` |
 | | `S3` | `bucket`, `region`, `endpoint` |
+| `ENVELOPE_HEADERS` | `POSTGRESQL` | `url` (a `jdbc:postgresql:` URL), `user`, `password`, and optional `table` (`envelope_headers` by default) and `poolSize` (4 by default) |
 
 Every port, its types and their keys are in the [catalogue of adapters](https://github.com/Spool-FRAMEWORK/infrastructure#available-adapters)
-of `spool-infrastructure`. There is no relational backend (no PostgreSQL, no JDBC).
+of `spool-infrastructure`. The only relational backend is the `POSTGRESQL` store of envelope headers.
 
 A new adapter is a plugin: a class that implements the provider interface of its port (`InboxWriterProvider`,
 `EventBusProvider`...), annotated with `@SpoolPlugin`. The name it returns from `name()` is the `type` the descriptor
