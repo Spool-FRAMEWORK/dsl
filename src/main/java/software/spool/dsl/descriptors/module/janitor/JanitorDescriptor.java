@@ -15,13 +15,14 @@ public record JanitorDescriptor(
         Optional<Duration> quarantineTtl,
         Optional<Duration> quarantineRetention,
         Optional<Integer> maxInboxUpdateAttempts,
+        Optional<Duration> processedKeysWindow,
         Optional<QuarantineServerDescriptor> quarantineServer
 ) implements SpoolModuleDescriptor {
 
     /** A janitor with the defaults for everything but its id. */
     public static JanitorDescriptor withDefaults(String id) {
         return new JanitorDescriptor(id, Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(),
-                Optional.empty(), Optional.empty(), Optional.empty());
+                Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty());
     }
 
     @Override public String moduleType() {

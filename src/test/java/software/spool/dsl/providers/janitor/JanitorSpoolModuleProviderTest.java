@@ -59,7 +59,7 @@ class JanitorSpoolModuleProviderTest {
     void create_withEveryTime_buildsTheModule() {
         JanitorDescriptor janitor = new JanitorDescriptor("j1", Optional.of(Schedule.every(Duration.ofSeconds(1))),
             Optional.of(Duration.ofSeconds(10)), Optional.of(Duration.ofDays(1)), Optional.of(Duration.ofDays(7)),
-            Optional.of(Duration.ofDays(90)), Optional.of(5), Optional.empty());
+            Optional.of(Duration.ofDays(90)), Optional.of(5), Optional.of(Duration.ofHours(1)), Optional.empty());
 
         assertThat(provider.create(configurationOf(janitor))).isNotNull();
     }
@@ -72,7 +72,7 @@ class JanitorSpoolModuleProviderTest {
     @Test
     void create_withATtlLongerThanTheJanitorAccepts_namesTheKey() {
         JanitorDescriptor janitor = new JanitorDescriptor("j1", Optional.empty(), Optional.empty(),
-            Optional.of(Duration.ofDays(30)), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty());
+            Optional.of(Duration.ofDays(30)), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty());
 
         assertThatThrownBy(() -> provider.create(configurationOf(janitor)))
             .isInstanceOf(InvalidDescriptorException.class)

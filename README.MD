@@ -426,6 +426,7 @@ ones.
 | `configuration.threshold` | How long an envelope can stay without moving before it is republished. |
 | `configuration.ttl` | How long an envelope stays in the inbox before it expires. |
 | `configuration.maxInboxUpdateAttempts` | Rounds an event is tried when the inbox fails to apply it. 3 by default. |
+| `configuration.processedKeysWindow` | How long the janitor remembers the envelopes it marked as persisted, so a repeated `EnvelopePersisted` does not start their `ttl` again. 10m by default. |
 
 With a `quarantineServer` block, the janitor serves on its node's HTTP server an API to review and resolve the
 quarantine ([ADR-014](https://linear.app/javier-castilla/document/adr-014-el-janitor-expone-una-api-http-para-revisar-y-resolver-la-e7e6abbdabeb)).
@@ -552,6 +553,14 @@ Consumes events from the bus and writes envelopes to the data lake.
 |---|---|
 | `FLUSH` | Writes in batches: when `size` envelopes arrive or, if set, `every` that long. |
 | `REACTIVE` | Writes each envelope immediately on arrival. |
+
+An envelope can be announced more than once: the bus delivers at least once, and the janitor republishes an
+envelope that waits longer than its `threshold`. The ingester remembers the envelopes it wrote for
+`configuration.processedKeysWindow` (10m by default): an envelope announced again within it is not written again,
+but its `EnvelopePersisted` is published again. An envelope sent to quarantine is not remembered, so it is validated
+again when it comes back ([ADR-007](https://linear.app/javier-castilla/document/adr-007-cada-consumidor-recuerda-las-claves-que-ya-ha-procesado-3544b675ef87),
+[ADR-010](https://linear.app/javier-castilla/document/adr-010-un-rechazo-no-cuenta-como-procesado-y-solo-recuerdan-claves-aee50158955c)).
+The keys are kept in the memory of the process: a restart forgets them, and each replica has its own.
 
 ---
 

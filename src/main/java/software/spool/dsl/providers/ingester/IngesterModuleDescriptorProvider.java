@@ -25,7 +25,8 @@ public class IngesterModuleDescriptorProvider implements ModuleDescriptorProvide
                 ingester.optional("type", ValueParsers.STRING).orElse(null),
                 ingester.string("id"),
                 configuration.optional("size", ValueParsers.INTEGER),
-                configuration.optional("every", ValueParsers.DURATION)
+                configuration.optional("every", ValueParsers.DURATION),
+                configuration.optional("processedKeysWindow", ValueParsers.DURATION)
         );
     }
 }

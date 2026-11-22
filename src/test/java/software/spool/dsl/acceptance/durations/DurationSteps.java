@@ -52,6 +52,16 @@ public class DurationSteps {
         assertThat(ingester.size()).contains(size);
     }
 
+    @Then("the processed keys window of the ingester is {int} {word}")
+    public void theProcessedKeysWindowOfTheIngesterIs(int amount, String unit) {
+        assertThat(module(IngesterDescriptor.class).processedKeysWindow()).contains(Duration.of(amount, UNITS.get(unit)));
+    }
+
+    @Then("the processed keys window of the janitor is {int} {word}")
+    public void theProcessedKeysWindowOfTheJanitorIs(int amount, String unit) {
+        assertThat(janitor().processedKeysWindow()).contains(Duration.of(amount, UNITS.get(unit)));
+    }
+
     @Then("the crawler polls every {int} minutes")
     public void theCrawlerPollsEvery(int minutes) {
         assertThat(module(CrawlerDescriptor.class).schedule()).isEqualTo(Schedule.every(Duration.ofMinutes(minutes)));

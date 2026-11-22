@@ -36,6 +36,7 @@ public class JanitorModuleDescriptorProvider implements ModuleDescriptorProvider
                 configuration.optional("quarantineTtl", ValueParsers.DURATION),
                 configuration.optional("quarantineRetention", ValueParsers.DURATION),
                 configuration.optional("maxInboxUpdateAttempts", ValueParsers.INTEGER),
+                configuration.optional("processedKeysWindow", ValueParsers.DURATION),
                 janitor.value("quarantineServer").map(present -> quarantineServer(janitor.object("quarantineServer")))
         );
     }

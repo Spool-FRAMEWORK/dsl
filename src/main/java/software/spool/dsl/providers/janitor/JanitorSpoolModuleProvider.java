@@ -74,6 +74,7 @@ public class JanitorSpoolModuleProvider implements SpoolModuleProvider {
         janitor.quarantineTtl().ifPresent(ttl -> builder.withMillisecondsQuarantineTtl(intMillis("quarantineTtl", ttl)));
         janitor.quarantineRetention().ifPresent(retention -> builder.withMillisecondsQuarantineRetention(retention.toMillis()));
         janitor.maxInboxUpdateAttempts().ifPresent(builder::withMaxInboxUpdateAttempts);
+        janitor.processedKeysWindow().ifPresent(builder::rememberProcessedKeysFor);
         if (infrastructure.find(InfrastructureKind.DATA_LAKE).isPresent()) {
             builder.rewriteDataLakeWith(InfrastructurePluginFactory.dataLakeWriter(infrastructure));
         }

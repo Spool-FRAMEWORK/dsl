@@ -51,6 +51,7 @@ public class IngesterSpoolModuleProvider implements SpoolModuleProvider {
         var builder = isBuffered(ingester)
                 ? factory.buffered().flushPolicy(buildFlushPolicy(ingester))
                 : factory.reactive();
+        ingester.processedKeysWindow().ifPresent(builder::rememberProcessedKeysFor);
         return builder
                 .from(bus)
                 .storesWith(InfrastructurePluginFactory.dataLakeWriter(infrastructure))
