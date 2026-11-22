@@ -281,6 +281,32 @@ infrastructure:
   lake: {kind: DATA_LAKE, type: S3, configuration: {bucket: lake, region: eu-west-1, endpoint: "https://s3.eu-west-1.amazonaws.com", healthCheckInterval: 30s}}
 ```
 
+#### Circuit of each piece and source
+
+Each piece and the source of each crawler have a circuit. When the failed calls reach the rate of its policy, the
+circuit opens: calls are rejected without reaching the piece, which shows as `UNHEALTHY` with the reason
+`circuit open until <time>`. Once that time comes, a few trial calls go through, and if they work the circuit closes.
+A crawler whose source has its circuit open skips that poll without reporting an error. A call that ends in an answer
+of the piece, such as an envelope the inbox already has, does not count as a failure.
+
+Every key is optional and goes in the `configuration` of the piece or the source:
+
+| Key | Default | What it does |
+|---|---|---|
+| `circuitFailureRate` | `50%` | The share of failed calls that opens the circuit |
+| `circuitMinimumCalls` | `5` | The calls needed within the window before the rate is judged |
+| `circuitWindow` | `1m` | The time over which calls are counted |
+| `circuitOpenFor` | `30s` | How long the circuit stays open |
+| `circuitHalfOpenCalls` | `1` | The trial calls let through when that time is over |
+
+A policy that cannot be met, such as `circuitFailureRate: 150%` or `circuitOpenFor: 0s`, stops the load naming the
+piece or the source and the key.
+
+```yaml
+infrastructure:
+  inbox: {kind: INBOX, type: FILE_SYSTEM, configuration: {path: "/var/spool/inbox", circuitFailureRate: 80%, circuitOpenFor: 1m}}
+```
+
 ---
 
 ### Crawler
@@ -323,6 +349,40 @@ crawler listens to it.
 | `eventMapping.domainMappingList` | The domain events the crawler publishes, by the simple name of their class. Optional. |
 | `eventMapping.eventPackage` | The package of those classes. Optional; `events` when missing. |
 | `errorRouter` | Where the crawler reports what fails. Optional; `DEFAULT` when missing. |
+
+#### When an HTTP source asks to wait
+
+An `HTTP` source that answers 429 or 503 saying how long to wait is not polled again until then: its circuit opens
+until that time (see [Circuit of each piece and source](#circuit-of-each-piece-and-source)). By default the wait comes
+from the `Retry-After` header, in seconds or as an HTTP date. These optional keys of `source.configuration` say where
+else it comes from:
+
+| Key | Default | What it does |
+|---|---|---|
+| `retryAfterHeader` | `Retry-After` | The header that holds the wait |
+| `retryAfterField` | none | A field of the JSON body that holds the wait, as a JSON Pointer such as `/error/retryInSeconds`. Declared instead of `retryAfterHeader` |
+| `retryAfterFormat` | `SECONDS` | `SECONDS` (an HTTP date is also read), `HTTP_DATE`, `EPOCH_SECONDS` or `EPOCH_MILLIS` |
+| `maxRetryAfter` | `1h` | The longest wait accepted; a longer one is cut to it |
+
+```yaml
+- crawler:
+    type: POLL
+    id: rate-limited-crawler
+    schedule:
+      every: 1m
+    source:
+      type: HTTP
+      configuration:
+        sourceId: rate-limited-source
+        url: "https://api.example.com/data"
+        retryAfterHeader: X-RateLimit-Reset
+        retryAfterFormat: EPOCH_SECONDS
+        maxRetryAfter: 10m
+      normalizer: JSON_ARRAY
+      mediaType: JSON
+    eventMapping:
+      namingConvention: SNAKE_CASE
+```
 
 ### Webhook
 
