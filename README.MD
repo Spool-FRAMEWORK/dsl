@@ -291,7 +291,7 @@ crawler listens to it.
 
 | Key | Description |
 |---|---|
-| `type` | `POLL` or `STREAM`. |
+| `type` | `POLL`, `STREAM` or `WEBHOOK`. |
 | `source.type` | The source plugin: `HTTP` for `POLL`, `IN_MEMORY` for `STREAM`. |
 | `source.normalizer` | The normalizer that turns what the source reads into records: `JSON`, `JSON_ARRAY`, `JSON_OBJECT`, `EVENT_CLASS`, `EVENT_CLASS_ARRAY` or `PDF`, or one composed from steps (see below). |
 | `source.mediaType` | The media type of the records, as an alias (`JSON`, `TEXT`, `PDF`, `PNG`, `JPEG`, `MP4`) or in full (`application/x-ndjson`). It only labels the records. |
@@ -299,6 +299,57 @@ crawler listens to it.
 | `eventMapping.domainMappingList` | The domain events the crawler publishes, by the simple name of their class. Optional. |
 | `eventMapping.eventPackage` | The package of those classes. Optional; `events` when missing. |
 | `errorRouter` | Where the crawler reports what fails. Optional; `DEFAULT` when missing. |
+
+### Webhook
+
+A `WEBHOOK` crawler receives its records instead of asking for them: senders `POST` them to a path of the node's HTTP
+server. Every delivery is identified by an authentication provider, and the sender needs a role
+([ADR-013](https://linear.app/javier-castilla/document/adr-013-toda-entrada-http-se-autentica-con-un-proveedor-con-nombre-7a1ffe638f42)).
+The path, the provider and the role are required, so a webhook is never open.
+
+```yaml
+authentication:
+  boe-sender:
+    type: HMAC_SIGNATURE
+    configuration:
+      header: X-Signature-256
+      secret: ${env:BOE_WEBHOOK_SECRET}
+      timestampHeader: X-Signature-Timestamp   # refuses a signed request sent again later
+      tolerance: PT5M
+      roles: boe-publisher
+infrastructure:
+  bus: {kind: EVENT_BUS, type: IN_MEMORY}
+  inbox: {kind: INBOX, type: FILE_SYSTEM, configuration: {path: /data/inbox}}
+modules:
+  - crawler:
+      type: WEBHOOK
+      id: boe-webhook
+      source:
+        type: WEBHOOK
+        configuration:
+          sourceId: boe
+          path: /spool/webhooks/boe
+        normalizer: JSON_ARRAY
+        mediaType: JSON
+      eventMapping:
+        namingConvention: SNAKE_CASE
+      webhook:
+        authentication: boe-sender
+        role: boe-publisher
+        maxBodySize: 1048576    # bytes, 1 MiB by default
+```
+
+| Answer | When |
+|---|---|
+| `202` | The records were stored, or were already in the inbox. The body says how many of each. |
+| `400` | No records could be read from the body. |
+| `401` / `403` | The sender is not identified, or lacks the role. |
+| `413` | The body is bigger than `maxBodySize`. It is refused before being read whole. |
+| `415` | The `Content-Type` is not the `mediaType` of the source. |
+| `503` | The inbox failed: the sender should send the delivery again. |
+
+A delivery sent twice stores its records once, by their idempotency key. With `HMAC_SIGNATURE`, sign a timestamp too:
+without one, a captured request could be sent again.
 
 ### Composing a normalizer
 

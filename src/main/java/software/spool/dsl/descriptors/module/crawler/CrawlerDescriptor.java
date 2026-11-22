@@ -15,8 +15,14 @@ public record CrawlerDescriptor(
         SourceDescriptor source,
         EventMappingDescriptor eventMapping,
         ErrorRouterDescriptor errorRouter,
-        Schedule schedule
+        Schedule schedule,
+        WebhookDescriptor webhook
 ) implements SpoolModuleDescriptor {
+
+    public CrawlerDescriptor(String type, String id, SourceDescriptor source, EventMappingDescriptor eventMapping,
+                             ErrorRouterDescriptor errorRouter, Schedule schedule) {
+        this(type, id, source, eventMapping, errorRouter, schedule, WebhookDescriptor.none());
+    }
 
     public CrawlerDescriptor(String type, String id, SourceDescriptor source, EventMappingDescriptor eventMapping) {
         this(type, id, source, eventMapping, null, Schedule.once());

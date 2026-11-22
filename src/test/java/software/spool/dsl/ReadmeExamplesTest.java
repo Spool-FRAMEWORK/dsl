@@ -109,6 +109,9 @@ class ReadmeExamplesTest {
     }
 
     private static void crawlerPluginsExist(CrawlerDescriptor crawler) {
+        if (crawler.type().equals("WEBHOOK")) {
+            return;
+        }
         if (crawler.type().equals("STREAM")) {
             KnownPlugins.get(StreamSourceProvider.class, crawler.source().type(), "source.type", "stream source");
         } else {

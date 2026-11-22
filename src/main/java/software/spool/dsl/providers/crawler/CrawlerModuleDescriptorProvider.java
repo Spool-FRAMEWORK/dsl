@@ -8,6 +8,7 @@ import software.spool.core.utils.media.MediaTypeResolver;
 import software.spool.dsl.descriptors.module.ScheduleReader;
 import software.spool.dsl.descriptors.module.SpoolModuleDescriptor;
 import software.spool.dsl.descriptors.module.crawler.CrawlerDescriptor;
+import software.spool.dsl.descriptors.module.crawler.WebhookDescriptor;
 import software.spool.dsl.descriptors.module.crawler.ErrorRouterDescriptor;
 import software.spool.dsl.descriptors.module.crawler.EventMappingDescriptor;
 import software.spool.dsl.descriptors.module.crawler.source.NormalizerDescriptor;
@@ -43,8 +44,16 @@ public class CrawlerModuleDescriptorProvider implements ModuleDescriptorProvider
                 readSource(crawler.object("source")),
                 readEventMapping(crawler.object("eventMapping")),
                 readErrorRouter(crawler),
-                SCHEDULE.read(crawler).orElseGet(Schedule::once)
+                SCHEDULE.read(crawler).orElseGet(Schedule::once),
+                readWebhook(crawler.objectOrEmpty("webhook"))
         );
+    }
+
+    private static WebhookDescriptor readWebhook(DescriptorReader webhook) {
+        return new WebhookDescriptor(
+                webhook.optional("authentication", ValueParsers.STRING),
+                webhook.optional("role", ValueParsers.STRING),
+                webhook.optional("maxBodySize", ValueParsers.INTEGER));
     }
 
     private static ErrorRouterDescriptor readErrorRouter(DescriptorReader crawler) {
