@@ -4,7 +4,9 @@ import software.spool.core.model.schedule.Schedule;
 import software.spool.core.model.vo.MediaType;
 import software.spool.core.port.serde.EnrichmentRule;
 import software.spool.core.port.serde.NamingConvention;
+import software.spool.core.resilience.model.CircuitBreakerPolicy;
 import software.spool.core.utils.media.MediaTypeResolver;
+import software.spool.dsl.InvalidDescriptorException;
 import software.spool.dsl.descriptors.module.ScheduleReader;
 import software.spool.dsl.descriptors.module.SpoolModuleDescriptor;
 import software.spool.dsl.descriptors.module.crawler.CrawlerDescriptor;
@@ -14,6 +16,7 @@ import software.spool.dsl.descriptors.module.crawler.EventMappingDescriptor;
 import software.spool.dsl.descriptors.module.crawler.source.NormalizerDescriptor;
 import software.spool.dsl.descriptors.module.crawler.source.SourceDescriptor;
 import software.spool.dsl.providers.ModuleDescriptorProvider;
+import software.spool.dsl.reader.CircuitPolicyReader;
 import software.spool.dsl.reader.DescriptorReader;
 import software.spool.dsl.reader.ValueParser;
 import software.spool.dsl.reader.ValueParsers;
@@ -72,8 +75,19 @@ public class CrawlerModuleDescriptorProvider implements ModuleDescriptorProvider
                 normalizer,
                 source.required("mediaType", MEDIA_TYPE),
                 source.optional("rootPath", ValueParsers.STRING).orElse(null),
-                source.list("enrichment").stream().map(CrawlerModuleDescriptorProvider::readRule).toList()
+                source.list("enrichment").stream().map(CrawlerModuleDescriptorProvider::readRule).toList(),
+                readCircuit(source)
         );
+    }
+
+    private static CircuitBreakerPolicy readCircuit(DescriptorReader source) {
+        DescriptorReader configuration = source.objectOrEmpty("configuration");
+        try {
+            return CircuitPolicyReader.read(configuration);
+        } catch (InvalidDescriptorException invalid) {
+            throw invalid.aboutSource(configuration.optional("sourceId", ValueParsers.STRING)
+                    .or(() -> source.optional("id", ValueParsers.STRING)).orElse(source.string("type")));
+        }
     }
 
     private static EnrichmentRule readRule(DescriptorReader rule) {

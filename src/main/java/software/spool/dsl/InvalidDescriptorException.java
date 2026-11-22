@@ -29,7 +29,12 @@ public class InvalidDescriptorException extends IllegalArgumentException {
 
     /** The same problem, saying which module ran into it: {@code module 'x': path problem}. */
     public InvalidDescriptorException inModule(String module) {
-        return new InvalidDescriptorException(path, problem, "module '" + module + "': ");
+        return new InvalidDescriptorException(path, problem, "module '" + module + "': " + context);
+    }
+
+    /** The same problem, saying which source of a crawler it is about: {@code source 'x': path problem}. */
+    public InvalidDescriptorException aboutSource(String source) {
+        return new InvalidDescriptorException(path, problem, context + "source '" + source + "': ");
     }
 
     /**

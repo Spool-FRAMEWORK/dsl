@@ -2,6 +2,7 @@ package software.spool.dsl.descriptors.module.crawler.source;
 
 import software.spool.core.model.vo.MediaType;
 import software.spool.core.port.serde.EnrichmentRule;
+import software.spool.core.resilience.model.CircuitBreakerPolicy;
 
 import java.util.List;
 import java.util.Map;
@@ -9,7 +10,8 @@ import java.util.Objects;
 
 /**
  * Where a crawler reads from, which normalizer turns what it reads into records and the media type those records
- * carry. The normalizer and the media type are declared apart: the media type only labels the records.
+ * carry. The normalizer and the media type are declared apart: the media type only labels the records. The circuit
+ * says when the source stops being called after failing.
  */
 public record SourceDescriptor(
         String type,
@@ -18,9 +20,15 @@ public record SourceDescriptor(
         NormalizerDescriptor normalizer,
         MediaType mediaType,
         String rootPath,
-        List<EnrichmentRule> enrichment
+        List<EnrichmentRule> enrichment,
+        CircuitBreakerPolicy circuit
 ) {
     public SourceDescriptor {
         rootPath = Objects.requireNonNullElse(rootPath, "");
+    }
+
+    public SourceDescriptor(String type, String id, Map<String, String> configuration, NormalizerDescriptor normalizer,
+                            MediaType mediaType, String rootPath, List<EnrichmentRule> enrichment) {
+        this(type, id, configuration, normalizer, mediaType, rootPath, enrichment, CircuitBreakerPolicy.defaults());
     }
 }

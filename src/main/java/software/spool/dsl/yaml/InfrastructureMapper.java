@@ -4,6 +4,7 @@ import software.spool.dsl.InvalidDescriptorException;
 import software.spool.dsl.descriptors.infrastructure.DeclaredInfrastructure;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureComponentDescriptor;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureKind;
+import software.spool.dsl.reader.CircuitPolicyReader;
 import software.spool.dsl.reader.DescriptorReader;
 import software.spool.dsl.yaml.raw.RawInfrastructureDescriptor;
 import software.spool.dsl.yaml.raw.RawPieceDescriptor;
@@ -39,8 +40,9 @@ final class InfrastructureMapper {
     private static InfrastructureComponentDescriptor piece(String name, RawPieceDescriptor raw) {
         String path = INFRASTRUCTURE + "." + name;
         InfrastructureKind kind = raw.kind().orElseThrow(() -> missingKind(path, name));
+        Map<String, String> configuration = raw.configuration() != null ? raw.configuration() : Map.of();
         return new InfrastructureComponentDescriptor(name, kind, DescriptorReader.require(path + ".type", raw.type()),
-                raw.configuration() != null ? raw.configuration() : Map.of());
+                configuration, CircuitPolicyReader.read(DescriptorReader.of(path + ".configuration", configuration)));
     }
 
     private static InvalidDescriptorException missingKind(String path, String name) {
