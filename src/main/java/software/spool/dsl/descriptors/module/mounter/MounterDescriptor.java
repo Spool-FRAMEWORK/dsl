@@ -1,6 +1,6 @@
 package software.spool.dsl.descriptors.module.mounter;
 
-import software.spool.dsl.descriptors.module.ScheduleDescriptor;
+import software.spool.core.model.schedule.Schedule;
 import software.spool.dsl.descriptors.module.SpoolModuleDescriptor;
 import software.spool.mounter.api.MountMode;
 
@@ -10,7 +10,7 @@ import java.util.Optional;
 public record MounterDescriptor(
         String id,
         MounterType type,
-        Optional<ScheduleDescriptor> schedule,
+        Optional<Schedule> schedule,
         MountMode mode,
         boolean validate,
         Optional<AggregatorClass> aggregator,

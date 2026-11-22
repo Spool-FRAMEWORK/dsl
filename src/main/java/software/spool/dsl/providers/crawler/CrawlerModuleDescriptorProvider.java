@@ -1,10 +1,11 @@
 package software.spool.dsl.providers.crawler;
 
+import software.spool.core.model.schedule.Schedule;
 import software.spool.core.model.vo.MediaType;
 import software.spool.core.port.serde.EnrichmentRule;
 import software.spool.core.port.serde.NamingConvention;
 import software.spool.core.utils.media.MediaTypeResolver;
-import software.spool.dsl.descriptors.module.ScheduleDescriptor;
+import software.spool.dsl.descriptors.module.ScheduleReader;
 import software.spool.dsl.descriptors.module.SpoolModuleDescriptor;
 import software.spool.dsl.descriptors.module.crawler.CrawlerDescriptor;
 import software.spool.dsl.descriptors.module.crawler.ErrorRouterDescriptor;
@@ -23,6 +24,7 @@ import static software.spool.dsl.reader.ReadableDuration.insteadOfMilliseconds;
 
 @SpoolPlugin(ModuleDescriptorProvider.class)
 public class CrawlerModuleDescriptorProvider implements ModuleDescriptorProvider {
+    private static final ScheduleReader SCHEDULE = ScheduleReader.standard();
 
     /** An alias such as JSON or a full media type such as application/json, which is what the records are labelled. */
     private static final ValueParser<MediaType> MEDIA_TYPE = ValueParsers.of("a media type such as JSON or application/json",
@@ -41,7 +43,7 @@ public class CrawlerModuleDescriptorProvider implements ModuleDescriptorProvider
                 readSource(crawler.object("source")),
                 readEventMapping(crawler.object("eventMapping")),
                 readErrorRouter(crawler),
-                ScheduleDescriptor.of(crawler)
+                SCHEDULE.read(crawler).orElseGet(Schedule::once)
         );
     }
 

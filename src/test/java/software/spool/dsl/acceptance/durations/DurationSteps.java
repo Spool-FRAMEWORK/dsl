@@ -1,8 +1,8 @@
 package software.spool.dsl.acceptance.durations;
 
 import io.cucumber.java.en.Then;
+import software.spool.core.model.schedule.Schedule;
 import software.spool.dsl.acceptance.DescriptorUnderTest;
-import software.spool.dsl.descriptors.module.ScheduleDescriptor;
 import software.spool.dsl.descriptors.module.crawler.CrawlerDescriptor;
 import software.spool.dsl.descriptors.module.ingester.IngesterDescriptor;
 import software.spool.dsl.descriptors.module.janitor.JanitorDescriptor;
@@ -34,7 +34,7 @@ public class DurationSteps {
 
     @Then("the janitor runs a round every {int} minute(s)")
     public void theJanitorRunsARoundEvery(int minutes) {
-        assertThat(janitor().schedule().map(ScheduleDescriptor::every)).contains(Duration.ofMinutes(minutes));
+        assertThat(janitor().schedule()).contains(Schedule.every(Duration.ofMinutes(minutes)));
     }
 
     @Then("the janitor republishes after {int} minutes, expires after {int} minutes and leaves the quarantine after {int} minutes")
@@ -54,8 +54,7 @@ public class DurationSteps {
 
     @Then("the crawler polls every {int} minutes")
     public void theCrawlerPollsEvery(int minutes) {
-        assertThat(module(CrawlerDescriptor.class).schedule().map(ScheduleDescriptor::every))
-                .contains(Duration.ofMinutes(minutes));
+        assertThat(module(CrawlerDescriptor.class).schedule()).isEqualTo(Schedule.every(Duration.ofMinutes(minutes)));
     }
 
     private JanitorDescriptor janitor() {

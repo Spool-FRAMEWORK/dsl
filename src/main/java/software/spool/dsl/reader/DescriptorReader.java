@@ -65,7 +65,11 @@ public final class DescriptorReader {
      * is not ignored.
      */
     public DescriptorReader knownKeysOnly(Class<? extends Record> type) {
-        List<String> known = Arrays.stream(type.getRecordComponents()).map(RecordComponent::getName).toList();
+        return knownKeysOnly(Arrays.stream(type.getRecordComponents()).map(RecordComponent::getName).toList());
+    }
+
+    /** Fails on the first key that is not one of the known ones, so a misspelt key is not ignored. */
+    public DescriptorReader knownKeysOnly(List<String> known) {
         keys().stream()
                 .filter(key -> !known.contains(key))
                 .findFirst()

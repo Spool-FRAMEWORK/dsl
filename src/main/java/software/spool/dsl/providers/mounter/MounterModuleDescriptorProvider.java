@@ -1,9 +1,10 @@
 package software.spool.dsl.providers.mounter;
 
+import software.spool.core.model.schedule.Schedule;
 import software.spool.core.model.vo.KeyEntries;
 import software.spool.core.model.vo.PartitionKey;
 import software.spool.dsl.InvalidDescriptorException;
-import software.spool.dsl.descriptors.module.ScheduleDescriptor;
+import software.spool.dsl.descriptors.module.ScheduleReader;
 import software.spool.dsl.descriptors.module.SpoolModuleDescriptor;
 import software.spool.dsl.descriptors.module.mounter.AggregatorClass;
 import software.spool.dsl.descriptors.module.mounter.MountReadDescriptor;
@@ -24,6 +25,7 @@ import java.util.Optional;
 
 @SpoolPlugin(ModuleDescriptorProvider.class)
 public class MounterModuleDescriptorProvider implements ModuleDescriptorProvider {
+    private static final ScheduleReader SCHEDULE = ScheduleReader.standard();
     private static final String PARTITION_PATH_SEPARATOR = "/";
 
     @Override
@@ -43,9 +45,9 @@ public class MounterModuleDescriptorProvider implements ModuleDescriptorProvider
 
     private static MounterDescriptor readMounter(String id, DescriptorReader mounter) {
         MounterType type = mounter.required("type", ValueParsers.oneOf(MounterType.class));
-        Optional<ScheduleDescriptor> schedule = ScheduleDescriptor.of(mounter);
+        Optional<Schedule> schedule = SCHEDULE.read(mounter);
         if (type == MounterType.POLL && schedule.isEmpty()) {
-            throw new InvalidDescriptorException(mounter.path() + ".schedule.every", "is required");
+            throw new InvalidDescriptorException(mounter.path() + ".schedule", "is required");
         }
         MountMode mode = mounter.required("mode", ValueParsers.oneOf(MountMode.class));
         boolean validate = mounter.optional("validate", ValueParsers.BOOLEAN).orElse(false);

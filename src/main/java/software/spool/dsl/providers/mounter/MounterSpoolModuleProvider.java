@@ -1,12 +1,10 @@
 package software.spool.dsl.providers.mounter;
 
 import software.spool.core.model.spool.SpoolModule;
-import software.spool.core.utils.polling.PollingPolicy;
 import software.spool.core.utils.polling.ThreadedPollingScheduler;
 import software.spool.core.port.quarantine.QuarantinedResultWriter;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureKind;
-import software.spool.dsl.descriptors.module.ScheduleDescriptor;
 import software.spool.dsl.descriptors.module.SpoolModuleDescriptor;
 import software.spool.dsl.descriptors.module.mounter.AggregatorClass;
 import software.spool.dsl.descriptors.module.mounter.MounterDescriptor;
@@ -79,7 +77,7 @@ public class MounterSpoolModuleProvider implements SpoolModuleProvider {
                 .aggregatingWith(aggregator(mounter));
         configure(mounter, infrastructure, builder.mount(), builder.checkpoint(), builder.quarantine(), builder.validation());
         builder.scheduling()
-                .pollingWith(PollingPolicy.every(mounter.schedule().map(ScheduleDescriptor::every).orElseThrow()))
+                .pollingWith(mounter.schedule().orElseThrow())
                 .scheduledWith(new ThreadedPollingScheduler())
                 .emittingWith(InfrastructurePluginFactory.tracedEventPublisher(infrastructure));
         return builder.build();

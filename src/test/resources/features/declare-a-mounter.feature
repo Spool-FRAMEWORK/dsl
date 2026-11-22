@@ -173,7 +173,7 @@ Feature: A mounter is declared in the descriptor
     When the node is started from the descriptor
     Then the descriptor is rejected
     And the error names the module "payments-mounter"
-    And the error says "schedule.every is required"
+    And the error says "schedule is required"
 
   @DEV-81
   Scenario: A mounter without the partitioning of what it writes is rejected

@@ -4,6 +4,7 @@ import software.spool.dsl.Pieces;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import software.spool.core.model.schedule.Schedule;
 import software.spool.core.port.serde.NamingConvention;
 import software.spool.dsl.InvalidDescriptorException;
 import software.spool.dsl.SpoolNodeDSL;
@@ -21,7 +22,6 @@ import software.spool.infrastructure.spi.provider.PluginConfiguration;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -84,7 +84,7 @@ class CrawlerErrorRouterTest {
             : Map.of("sourceId", "s", "eventClassName", "StreamedOrder");
         SourceDescriptor source = new SourceDescriptor(sourceType, "s", sourceConfiguration, Extended.named("JSON_ARRAY", "source.normalizer"), MediaTypes.JSON, "", List.of());
         EventMappingDescriptor mapping = new EventMappingDescriptor(NamingConvention.SNAKE_CASE, List.of(), List.of());
-        return Pieces.node(List.of(new CrawlerDescriptor(crawlerType, "c", source, mapping, errorRouter, Optional.empty())),
+        return Pieces.node(List.of(new CrawlerDescriptor(crawlerType, "c", source, mapping, errorRouter, Schedule.once())),
             Pieces.eventBus("IN_MEMORY"), Pieces.inbox("FILE_SYSTEM", Map.of("path", tmp.toString())));
     }
 }

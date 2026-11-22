@@ -19,7 +19,7 @@ import software.spool.janitor.api.Janitor;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureComponentDescriptor;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
 import software.spool.dsl.InvalidDescriptorException;
-import software.spool.dsl.descriptors.module.ScheduleDescriptor;
+import software.spool.core.model.schedule.Schedule;
 import software.spool.dsl.descriptors.module.janitor.JanitorDescriptor;
 import software.spool.dsl.descriptors.SpoolNodeDescriptor;
 import software.spool.dsl.descriptors.module.mounter.MountReadDescriptor;
@@ -57,7 +57,7 @@ class JanitorSpoolModuleProviderTest {
 
     @Test
     void create_withEveryTime_buildsTheModule() {
-        JanitorDescriptor janitor = new JanitorDescriptor("j1", Optional.of(new ScheduleDescriptor(Duration.ofSeconds(1))),
+        JanitorDescriptor janitor = new JanitorDescriptor("j1", Optional.of(Schedule.every(Duration.ofSeconds(1))),
             Optional.of(Duration.ofSeconds(10)), Optional.of(Duration.ofDays(1)), Optional.of(Duration.ofDays(7)),
             Optional.of(Duration.ofDays(90)), Optional.of(5), Optional.empty());
 

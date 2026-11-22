@@ -45,7 +45,7 @@ public class CrawlerPollSpoolModuleProvider implements SpoolModuleProvider {
                 : CrawlerBuilderFactory.poll(pollSource);
         return builder
                 .source()
-                    .schedule(scheduleOf(crawler))
+                    .schedule(PollingConfiguration.of(crawler.schedule()))
                     .ports(InfrastructurePluginFactory.crawlerPorts(infrastructure))
                     .enrichRules(source.enrichment())
                     .rootPath(source.rootPath())
@@ -67,9 +67,4 @@ public class CrawlerPollSpoolModuleProvider implements SpoolModuleProvider {
         return (Normalizer<I>) InfrastructurePluginFactory.normalizer(source);
     }
 
-    private static PollingConfiguration scheduleOf(CrawlerDescriptor crawler) {
-        return crawler.schedule()
-                .map(schedule -> PollingConfiguration.every(schedule.every()))
-                .orElseGet(PollingConfiguration::once);
-    }
 }

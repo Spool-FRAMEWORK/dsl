@@ -1,6 +1,6 @@
 package software.spool.dsl.providers.janitor;
 
-import software.spool.dsl.descriptors.module.ScheduleDescriptor;
+import software.spool.dsl.descriptors.module.ScheduleReader;
 import software.spool.dsl.descriptors.module.SpoolModuleDescriptor;
 import software.spool.dsl.descriptors.module.janitor.JanitorDescriptor;
 import software.spool.dsl.descriptors.module.janitor.QuarantineServerDescriptor;
@@ -13,6 +13,7 @@ import static software.spool.dsl.reader.ReadableDuration.insteadOfMilliseconds;
 
 @SpoolPlugin(ModuleDescriptorProvider.class)
 public class JanitorModuleDescriptorProvider implements ModuleDescriptorProvider {
+    private static final ScheduleReader SCHEDULE = ScheduleReader.standard();
 
     @Override
     public String name() {
@@ -29,7 +30,7 @@ public class JanitorModuleDescriptorProvider implements ModuleDescriptorProvider
                 .replaced("millisecondsQuarantineRetention", insteadOfMilliseconds("quarantineRetention"));
         return new JanitorDescriptor(
                 janitor.string("id"),
-                ScheduleDescriptor.of(janitor),
+                SCHEDULE.read(janitor),
                 configuration.optional("threshold", ValueParsers.DURATION),
                 configuration.optional("ttl", ValueParsers.DURATION),
                 configuration.optional("quarantineTtl", ValueParsers.DURATION),

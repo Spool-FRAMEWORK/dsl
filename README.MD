@@ -20,6 +20,7 @@ Every YAML example in this README is loaded by `ReadmeExamplesTest`, so it is th
   - [Crawler](#crawler)
   - [Janitor](#janitor)
   - [Durations](#durations)
+  - [Schedule](#schedule)
   - [Quarantine](#quarantine)
   - [Ingester](#ingester)
   - [Mounter](#mounter)
@@ -268,7 +269,7 @@ crawler listens to it.
     type: POLL
     id: my-crawler
     schedule:
-      every: 1m                 # without a schedule, a POLL crawler polls once
+      every: 1m                 # without a schedule, a POLL crawler polls once; see Schedule
     source:
       type: HTTP
       configuration:
@@ -370,7 +371,7 @@ ones.
 
 | Key | Description |
 |---|---|
-| `schedule.every` | How often the janitor runs a round. |
+| `schedule` | When the janitor runs a round, as described in [Schedule](#schedule). Every 5s by default. |
 | `configuration.threshold` | How long an envelope can stay without moving before it is republished. |
 | `configuration.ttl` | How long an envelope stays in the inbox before it expires. |
 | `configuration.maxInboxUpdateAttempts` | Rounds an event is tried when the inbox fails to apply it. 3 by default. |
@@ -412,6 +413,40 @@ Every time in the descriptor is a duration, in ISO 8601 (`PT5S`, `P30D`) or in t
 `2h`, `30d`. A bare number is not accepted, because it would not say its unit. The keys that held milliseconds
 (`millisecondsTTL`, `scheduleMilliseconds`...) are no longer read: loading fails and names the key that replaces
 them ([ADR-011](https://linear.app/javier-castilla/document/adr-011-el-descriptor-admite-variables-propias-y-de-entorno-y-b7e8390d83c6)).
+
+### Schedule
+
+A polling crawler, a janitor and a polling mounter say when they run with `schedule`, in one of three forms
+([ADR-015](https://linear.app/javier-castilla/document/adr-015-cuando-se-ejecuta-un-modulo-se-describe-con-un-schedule-019f11c013cd)).
+
+```yaml
+- janitor:
+    id: once
+    schedule: once                                     # one round when the module starts
+- janitor:
+    id: every-five-minutes
+    schedule: {every: 5m}                              # when the module starts, then 5 minutes after each round ends
+- janitor:
+    id: first-of-the-month
+    schedule: {cron: "0 8 1 * *", zone: Europe/Madrid} # the 1st of each month at 8:00 in Madrid, also in summer time
+```
+
+A cron expression is a Unix one of 5 fields: minute, hour, day of the month, month and day of the week. Each field
+takes `*`, a value (`5`), a list (`1,15`), a range (`9-18`) or a step (`*/15`, `0-30/10`). Months and days of the
+week also take names (`JAN`...`DEC`, `SUN`...`SAT`), and Sunday is `0` or `7`. The macros `@hourly`, `@daily`,
+`@midnight`, `@weekly`, `@monthly`, `@yearly` and `@annually` stand for their usual expressions.
+
+The `zone` is required with `cron`, because the same descriptor would otherwise run at different hours depending on
+where it is deployed. It takes any time zone Java knows, such as `Europe/Madrid`, `UTC` or `+02:00`.
+
+A Unix cron expression has some limits. It has no seconds, so a shorter period needs `every`. It cannot say "the last
+day of the month" or "the first Monday of the month". With both a day of the month and a day of the week,
+either of them is enough: `0 0 1 * MON` runs on the 1st and on every Monday. `@reboot` is not accepted, since
+`schedule: once` does that.
+
+The dates that pass while a round is running, or while the node is stopped, are not caught up: the next round is
+the next date of the expression after the round ends. Loading fails, with the path of the value, on an expression
+that is not valid, a zone that does not exist, a `cron` without `zone`, or two forms at once.
 
 ---
 

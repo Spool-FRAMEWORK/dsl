@@ -1,10 +1,10 @@
 package software.spool.dsl.providers.janitor;
 
+import software.spool.core.model.schedule.Schedule;
 import software.spool.core.model.spool.SpoolModule;
 import software.spool.dsl.InvalidDescriptorException;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureKind;
-import software.spool.dsl.descriptors.module.ScheduleDescriptor;
 import software.spool.dsl.descriptors.module.SpoolModuleDescriptor;
 import software.spool.dsl.descriptors.module.janitor.JanitorDescriptor;
 import software.spool.dsl.descriptors.module.janitor.QuarantineServerDescriptor;
@@ -25,7 +25,7 @@ import java.util.List;
 
 @SpoolPlugin(SpoolModuleProvider.class)
 public class JanitorSpoolModuleProvider implements SpoolModuleProvider {
-    private static final Duration DEFAULT_ROUND_INTERVAL = Duration.ofSeconds(5);
+    private static final Schedule DEFAULT_ROUND_SCHEDULE = Schedule.every(Duration.ofSeconds(5));
     private static final String QUARANTINE_SERVER = "quarantineServer";
     private static final int DEFAULT_PAGE_SIZE = 100;
     private static final int DEFAULT_MAX_PAGE_SIZE = 1000;
@@ -61,7 +61,7 @@ public class JanitorSpoolModuleProvider implements SpoolModuleProvider {
                 .on(InfrastructurePluginFactory.tracedEventPublisher(infrastructure))
                 .subscribeWith(bus)
                 .quarantineIn(InfrastructurePluginFactory.quarantineRepository(infrastructure))
-                .every(janitor.schedule().map(ScheduleDescriptor::every).orElse(DEFAULT_ROUND_INTERVAL));
+                .schedule(janitor.schedule().orElse(DEFAULT_ROUND_SCHEDULE));
         janitor.threshold().ifPresent(threshold -> builder.withMillisecondsThreshold(intMillis("threshold", threshold)));
         janitor.ttl().ifPresent(ttl -> builder.withMillisecondsTtl(intMillis("ttl", ttl)));
         janitor.quarantineTtl().ifPresent(ttl -> builder.withMillisecondsQuarantineTtl(intMillis("quarantineTtl", ttl)));

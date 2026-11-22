@@ -11,7 +11,7 @@ import software.spool.dsl.InvalidDescriptorException;
 import software.spool.dsl.descriptors.SpoolNodeDescriptor;
 import software.spool.dsl.descriptors.module.crawler.CrawlerDescriptor;
 import software.spool.dsl.descriptors.module.ingester.IngesterDescriptor;
-import software.spool.dsl.descriptors.module.ScheduleDescriptor;
+import software.spool.core.model.schedule.Schedule;
 import software.spool.dsl.descriptors.module.janitor.JanitorDescriptor;
 import software.spool.dsl.yaml.raw.RawSpoolNodeDescriptor;
 
@@ -45,7 +45,7 @@ class DescriptorMapperYamlTest {
         assertThat(crawler.source().mediaType()).isEqualTo(MediaTypes.JSON);
         assertThat(crawler.source().rootPath()).isEqualTo("events");
         assertThat(crawler.source().configuration()).containsEntry("sourceId", "synthea-api");
-        assertThat(crawler.schedule()).contains(new ScheduleDescriptor(Duration.ofSeconds(5)));
+        assertThat(crawler.schedule()).isEqualTo(Schedule.every(Duration.ofSeconds(5)));
         assertThat(crawler.eventMapping().namingConvention()).isEqualTo(NamingConvention.SNAKE_CASE);
         assertThat(crawler.eventMapping().domainEvents()).isEmpty();
         assertThat(crawler.eventMapping().attributeList()).isEmpty();
@@ -56,7 +56,7 @@ class DescriptorMapperYamlTest {
 
         JanitorDescriptor janitor = (JanitorDescriptor) node.modules().get(2);
         assertThat(janitor.id()).isEqualTo("synthea-janitor");
-        assertThat(janitor.schedule()).contains(new ScheduleDescriptor(Duration.ofSeconds(1)));
+        assertThat(janitor.schedule()).contains(Schedule.every(Duration.ofSeconds(1)));
         assertThat(janitor.threshold()).contains(Duration.ofSeconds(10));
         assertThat(janitor.ttl()).contains(Duration.ofSeconds(100));
         assertThat(janitor.quarantineRetention()).contains(Duration.ofDays(30));
