@@ -64,6 +64,7 @@ public class MounterSteps {
     private final Map<String, Path> dataMarts = new LinkedHashMap<>();
     private final StringBuilder mounters = new StringBuilder();
     private Optional<SpoolNode> node = Optional.empty();
+    private int nodePort;
     private int silverFilesBeforeStart;
 
     public MounterSteps(DescriptorUnderTest descriptor) {
@@ -274,8 +275,18 @@ public class MounterSteps {
         node = Optional.of(startedNode(descriptor.loaded()));
     }
 
-    private static SpoolNode startedNode(SpoolNodeDescriptor loaded) throws IOException {
-        SpoolNode started = SpoolNode.create(freePort());
+    Path dataLakeFolder() {
+        return dataLake;
+    }
+
+    int nodePort() {
+        descriptor.loaded();
+        return nodePort;
+    }
+
+    private SpoolNode startedNode(SpoolNodeDescriptor loaded) throws IOException {
+        nodePort = freePort();
+        SpoolNode started = SpoolNode.create(nodePort);
         loaded.declaredModules().forEach(module ->
                 started.register(ModuleProviderRegistry.build(module.descriptor(), loaded.infrastructureOf(module))));
         started.start();
