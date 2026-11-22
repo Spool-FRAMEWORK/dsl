@@ -1,6 +1,20 @@
 package software.spool.dsl.providers;
 
+import software.spool.core.adapter.health.MonitoredDataLakeEnvelopeRemover;
+import software.spool.core.adapter.health.MonitoredDataLakeWriter;
+import software.spool.core.adapter.health.MonitoredEventBus;
+import software.spool.core.adapter.health.MonitoredInboxEnvelopeRemover;
+import software.spool.core.adapter.health.MonitoredInboxReader;
+import software.spool.core.adapter.health.MonitoredInboxUpdater;
+import software.spool.core.adapter.health.MonitoredQuarantineRepository;
+import software.spool.core.port.health.PieceMonitor;
 import software.spool.core.port.quarantine.QuarantineRepository;
+import software.spool.crawler.api.adapter.health.MonitoredInboxWriter;
+import software.spool.mounter.api.adapter.health.MonitoredAggregateMetadataRepository;
+import software.spool.mounter.api.adapter.health.MonitoredDataMartRemover;
+import software.spool.mounter.api.adapter.health.MonitoredDataMartWriter;
+import software.spool.mounter.api.adapter.health.MonitoredPartitionDiscovery;
+import software.spool.mounter.api.adapter.health.MonitoredPartitionedReader;
 import software.spool.core.adapter.jackson.RecordSerializerFactory;
 import software.spool.core.adapter.otel.OpenTelemetryTracedEventBus;
 import software.spool.core.port.bus.EventBus;
@@ -44,6 +58,7 @@ import java.util.Optional;
 /**
  * Builds the infrastructure ports a module asks for, from the pieces its infrastructure resolves for it. A piece is
  * required only when a module asks for it, so a node with just a crawler does not need a data lake in its descriptor.
+ * Each port is watched by the monitor of its piece, so that the health of the module tells how the piece is doing.
  *
  * <p>The backend of each port is chosen by name: the descriptor says which one, as in {@code type: S3}, and this
  * factory looks it up with {@link KnownPlugins}. {@code supports()} and {@code priority()} play no part in that. They
@@ -61,8 +76,8 @@ public final class InfrastructurePluginFactory {
 
     public static EventBus eventBus(InfrastructureDescriptor infra) {
         InfrastructureComponentDescriptor bus = infra.eventBus();
-        return KnownPlugins.get(EventBusProvider.class, bus.pluginName(), bus.path() + ".type", "event bus")
-                .create(bus.toPluginConfiguration());
+        return new MonitoredEventBus(KnownPlugins.get(EventBusProvider.class, bus.pluginName(), bus.path() + ".type", "event bus")
+                .create(bus.toPluginConfiguration()), monitorOf(infra, bus));
     }
 
     public static EventPublisher tracedEventPublisher(InfrastructureDescriptor infra) {
@@ -72,82 +87,82 @@ public final class InfrastructurePluginFactory {
 
     public static InboxWriter inboxWriter(InfrastructureDescriptor infra) {
         InfrastructureComponentDescriptor inbox = infra.inbox();
-        return KnownPlugins.get(InboxWriterProvider.class, inbox.pluginName(), inbox.path() + ".type", "inbox writer")
-                .create(inbox.toPluginConfiguration());
+        return new MonitoredInboxWriter(KnownPlugins.get(InboxWriterProvider.class, inbox.pluginName(), inbox.path() + ".type", "inbox writer")
+                .create(inbox.toPluginConfiguration()), monitorOf(infra, inbox));
     }
 
     public static InboxReader inboxReader(InfrastructureDescriptor infra) {
         InfrastructureComponentDescriptor inbox = infra.inbox();
-        return KnownPlugins.get(InboxReaderProvider.class, inbox.pluginName(), inbox.path() + ".type", "inbox reader")
-                .create(inbox.toPluginConfiguration());
+        return new MonitoredInboxReader(KnownPlugins.get(InboxReaderProvider.class, inbox.pluginName(), inbox.path() + ".type", "inbox reader")
+                .create(inbox.toPluginConfiguration()), monitorOf(infra, inbox));
     }
 
     public static InboxUpdater inboxUpdater(InfrastructureDescriptor infra) {
         InfrastructureComponentDescriptor inbox = infra.inbox();
-        return KnownPlugins.get(InboxUpdaterProvider.class, inbox.pluginName(), inbox.path() + ".type", "inbox updater")
-                .create(inbox.toPluginConfiguration());
+        return new MonitoredInboxUpdater(KnownPlugins.get(InboxUpdaterProvider.class, inbox.pluginName(), inbox.path() + ".type", "inbox updater")
+                .create(inbox.toPluginConfiguration()), monitorOf(infra, inbox));
     }
 
     public static InboxEnvelopeRemover inboxEnvelopeRemover(InfrastructureDescriptor infra) {
         InfrastructureComponentDescriptor inbox = infra.inbox();
-        return KnownPlugins.get(InboxEnvelopeRemoverProvider.class, inbox.pluginName(), inbox.path() + ".type", "inbox envelope remover")
-                .create(inbox.toPluginConfiguration());
+        return new MonitoredInboxEnvelopeRemover(KnownPlugins.get(InboxEnvelopeRemoverProvider.class, inbox.pluginName(), inbox.path() + ".type", "inbox envelope remover")
+                .create(inbox.toPluginConfiguration()), monitorOf(infra, inbox));
     }
 
     public static DataLakeWriter dataLakeWriter(InfrastructureDescriptor infra) {
         InfrastructureComponentDescriptor dataLake = infra.dataLake();
-        return KnownPlugins.get(DataLakeWriterProvider.class, dataLake.pluginName(), dataLake.path() + ".type", "data lake writer")
-                .create(dataLake.toPluginConfiguration());
+        return new MonitoredDataLakeWriter(KnownPlugins.get(DataLakeWriterProvider.class, dataLake.pluginName(), dataLake.path() + ".type", "data lake writer")
+                .create(dataLake.toPluginConfiguration()), monitorOf(infra, dataLake));
     }
 
     public static DataLakeEnvelopeRemover dataLakeEnvelopeRemover(InfrastructureDescriptor infra) {
         InfrastructureComponentDescriptor dataLake = infra.dataLake();
-        return KnownPlugins.get(DataLakeEnvelopeRemoverProvider.class, dataLake.pluginName(), dataLake.path() + ".type", "data lake envelope remover")
-                .create(dataLake.toPluginConfiguration());
+        return new MonitoredDataLakeEnvelopeRemover(KnownPlugins.get(DataLakeEnvelopeRemoverProvider.class, dataLake.pluginName(), dataLake.path() + ".type", "data lake envelope remover")
+                .create(dataLake.toPluginConfiguration()), monitorOf(infra, dataLake));
     }
 
     public static PartitionedReader partitionedReader(InfrastructureDescriptor infra) {
         InfrastructureComponentDescriptor dataLake = infra.dataLake();
-        return KnownPlugins.get(PartitionedReaderProvider.class, dataLake.pluginName(), dataLake.path() + ".type", "partitioned reader")
-                .create(dataLake.toPluginConfiguration());
+        return new MonitoredPartitionedReader(KnownPlugins.get(PartitionedReaderProvider.class, dataLake.pluginName(), dataLake.path() + ".type", "partitioned reader")
+                .create(dataLake.toPluginConfiguration()), monitorOf(infra, dataLake));
     }
 
     public static DataMartWriter dataMartWriter(InfrastructureDescriptor infra) {
         InfrastructureComponentDescriptor dataMart = infra.dataMart();
-        return KnownPlugins.get(DataMartWriterProvider.class, dataMart.pluginName(), dataMart.path() + ".type", "data mart writer")
-                .create(dataMart.toPluginConfiguration());
+        return new MonitoredDataMartWriter(KnownPlugins.get(DataMartWriterProvider.class, dataMart.pluginName(), dataMart.path() + ".type", "data mart writer")
+                .create(dataMart.toPluginConfiguration()), monitorOf(infra, dataMart));
     }
 
     public static DataMartWriter dataLakeMountWriter(InfrastructureDescriptor infra) {
         InfrastructureComponentDescriptor dataLake = infra.dataLake();
-        return KnownPlugins.get(DataMartWriterProvider.class, dataLake.pluginName(), dataLake.path() + ".type", "data lake mount writer")
-                .create(dataLake.toPluginConfiguration());
+        return new MonitoredDataMartWriter(KnownPlugins.get(DataMartWriterProvider.class, dataLake.pluginName(), dataLake.path() + ".type", "data lake mount writer")
+                .create(dataLake.toPluginConfiguration()), monitorOf(infra, dataLake));
     }
 
     public static DataMartRemover dataMartRemover(InfrastructureDescriptor infra) {
         InfrastructureComponentDescriptor dataMart = infra.dataMart();
-        return KnownPlugins.get(DataMartRemoverProvider.class, dataMart.pluginName(), dataMart.path() + ".type", "data mart remover")
-                .create(dataMart.toPluginConfiguration());
+        return new MonitoredDataMartRemover(KnownPlugins.get(DataMartRemoverProvider.class, dataMart.pluginName(), dataMart.path() + ".type", "data mart remover")
+                .create(dataMart.toPluginConfiguration()), monitorOf(infra, dataMart));
     }
 
     /** Lists the partitions of the layer of the data lake that a mount of the mode reads. */
     public static PartitionDiscovery partitionDiscovery(InfrastructureDescriptor infra, MountMode mode) {
         InfrastructureComponentDescriptor dataLake = infra.dataLake();
-        return KnownPlugins.get(PartitionDiscoveryProvider.class, dataLake.pluginName(), dataLake.path() + ".type", "partition discovery")
-                .create(PluginConfiguration.of(dataLake.configuration(), Map.of(PartitionDiscoveryProvider.MODE, mode)));
+        return new MonitoredPartitionDiscovery(KnownPlugins.get(PartitionDiscoveryProvider.class, dataLake.pluginName(), dataLake.path() + ".type", "partition discovery")
+                .create(PluginConfiguration.of(dataLake.configuration(), Map.of(PartitionDiscoveryProvider.MODE, mode))), monitorOf(infra, dataLake));
     }
 
     /** The metadata of the aggregates, when the infrastructure of the module has a piece for it. */
     public static Optional<AggregateMetadataRepository> aggregateMetadataRepository(InfrastructureDescriptor infra) {
-        return infra.aggregateMetadata().map(piece -> KnownPlugins.get(AggregateMetadataRepositoryProvider.class,
+        return infra.aggregateMetadata().map(piece -> new MonitoredAggregateMetadataRepository(KnownPlugins.get(AggregateMetadataRepositoryProvider.class,
                         piece.pluginName(), piece.path() + ".type", "aggregate metadata repository")
-                .create(piece.toPluginConfiguration()));
+                .create(piece.toPluginConfiguration()), monitorOf(infra, piece)));
     }
 
     public static QuarantineRepository quarantineRepository(InfrastructureDescriptor infra) {
         InfrastructureComponentDescriptor quarantineRepository = infra.quarantineRepository();
-        return KnownPlugins.get(QuarantineRepositoryProvider.class, quarantineRepository.pluginName(), quarantineRepository.path() + ".type", "quarantine repository")
-                .create(quarantineRepository.toPluginConfiguration());
+        return new MonitoredQuarantineRepository(KnownPlugins.get(QuarantineRepositoryProvider.class, quarantineRepository.pluginName(), quarantineRepository.path() + ".type", "quarantine repository")
+                .create(quarantineRepository.toPluginConfiguration()), monitorOf(infra, quarantineRepository));
     }
 
     public static CrawlerPorts crawlerPorts(InfrastructureDescriptor infra) {
@@ -155,6 +170,10 @@ public final class InfrastructurePluginFactory {
                 .bus(tracedEventPublisher(infra))
                 .inbox(inboxWriter(infra))
                 .build();
+    }
+
+    private static PieceMonitor monitorOf(InfrastructureDescriptor infra, InfrastructureComponentDescriptor piece) {
+        return infra.monitorOf(piece, PieceMonitors::of);
     }
 
     public static Normalizer<?> normalizer(SourceDescriptor source) {

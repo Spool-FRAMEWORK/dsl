@@ -1,12 +1,15 @@
 package software.spool.dsl.descriptors.infrastructure;
 
+import software.spool.core.port.health.PieceMonitor;
 import software.spool.dsl.InvalidDescriptorException;
 
 import java.util.EnumSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Function;
 
 /**
  * The infrastructure of one module. Each kind is resolved when the module asks for it: the piece the module names in
@@ -19,6 +22,7 @@ public final class InfrastructureDescriptor {
     private final String modulePath;
     private final Map<InfrastructureKind, InfrastructureComponentDescriptor> named;
     private final Set<InfrastructureKind> asked = EnumSet.noneOf(InfrastructureKind.class);
+    private final Map<String, PieceMonitor> monitors = new LinkedHashMap<>();
 
     public InfrastructureDescriptor(Optional<String> watchdog, DeclaredInfrastructure declared, String modulePath,
                                     Map<InfrastructureKind, InfrastructureComponentDescriptor> named) {
@@ -81,6 +85,17 @@ public final class InfrastructureDescriptor {
     }
 
     /** The kinds the module has asked for so far. */
+    /** The monitor of a piece the module uses, made with the given function the first time the piece is asked for. */
+    public PieceMonitor monitorOf(InfrastructureComponentDescriptor piece,
+                                  Function<InfrastructureComponentDescriptor, PieceMonitor> monitor) {
+        return monitors.computeIfAbsent(piece.name(), name -> monitor.apply(piece));
+    }
+
+    /** The monitors of the pieces the module asked for, in the order it asked for them. */
+    public List<PieceMonitor> monitors() {
+        return List.copyOf(monitors.values());
+    }
+
     public Set<InfrastructureKind> askedKinds() {
         return Set.copyOf(asked);
     }

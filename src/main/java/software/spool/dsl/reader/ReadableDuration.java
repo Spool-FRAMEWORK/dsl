@@ -21,7 +21,7 @@ public final class ReadableDuration {
 
     private ReadableDuration() {}
 
-    static Optional<Duration> parse(Object raw) {
+    public static Optional<Duration> parse(Object raw) {
         if (!(raw instanceof String text)) return Optional.empty();
         return shortForm(text.strip()).or(() -> iso(text.strip())).filter(duration -> !duration.isNegative());
     }

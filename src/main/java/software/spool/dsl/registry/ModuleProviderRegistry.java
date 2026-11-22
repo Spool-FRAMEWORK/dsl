@@ -1,5 +1,6 @@
 package software.spool.dsl.registry;
 
+import software.spool.core.adapter.health.MonitoredModule;
 import software.spool.dsl.providers.mounter.QuarantinedResultWriters;
 import software.spool.dsl.providers.authentication.RequestAuthenticators;
 import software.spool.core.model.spool.SpoolModule;
@@ -31,7 +32,8 @@ public final class ModuleProviderRegistry {
     /**
      * Builds a module, giving its provider the authentication providers of the descriptor in the context key
      * {@value #AUTHENTICATION}, so that an HTTP entry of the module can find the one it names. Once built, a piece the
-     * module names in {@code uses} but never asked for fails, since it is almost certainly a mistake.
+     * module names in {@code uses} but never asked for fails, since it is almost certainly a mistake. The module built
+     * reports the health of each piece it asked for.
      */
     public static SpoolModule build(SpoolModuleDescriptor descriptor,
                                     InfrastructureDescriptor infrastructure,
@@ -58,7 +60,7 @@ public final class ModuleProviderRegistry {
         try {
             SpoolModule module = PluginResolver.resolve(SpoolModuleProvider.class, config);
             infrastructure.checkEveryNamedPieceIsUsed();
-            return module;
+            return new MonitoredModule(module, infrastructure.monitors());
         } catch (InvalidDescriptorException e) {
             throw e.inModule(descriptor.id());
         } catch (IllegalStateException e) {
