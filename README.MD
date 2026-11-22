@@ -258,6 +258,28 @@ modules:
 - A descriptor of the previous format, with a fixed key per component (`eventBus:`, `inbox:`...), stops the load
   saying which `kind` to add to each one, and `infrastructure.watchdog` says to move it to the root.
 
+#### Health of each piece
+
+The health of the node (`GET /spool/health`) lists, for each module, every piece it uses with its name, its type and
+its status, and the heartbeat sends the same to the watchdog
+([ADR-030](https://linear.app/javier-castilla/document/adr-030-la-salud-de-un-modulo-sale-de-cada-pieza-de-infraestructura-abe3aade918e)).
+A piece is `UNHEALTHY` while the last call to it failed or its check fails, and `DEGRADED` when its check is slow. A
+module takes the worst status of its pieces, and the node answers 503 when one is `UNHEALTHY`.
+
+The check of a piece comes from the plugin of its type (`FILE_SYSTEM`, `RAW_FILE_SYSTEM`, `S3` and `KAFKA` have one);
+a type without one is judged only by the calls to it. Two optional keys of the piece's `configuration` change how
+often it is checked:
+
+| Key | Default | What it does |
+|---|---|---|
+| `healthCheckInterval` | `10s` | The shortest time between two checks; in between, the last result is reused |
+| `healthSlowAfter` | `2s` | A check that takes longer leaves the piece `DEGRADED` |
+
+```yaml
+infrastructure:
+  lake: {kind: DATA_LAKE, type: S3, configuration: {bucket: lake, region: eu-west-1, endpoint: "https://s3.eu-west-1.amazonaws.com", healthCheckInterval: 30s}}
+```
+
 ---
 
 ### Crawler
