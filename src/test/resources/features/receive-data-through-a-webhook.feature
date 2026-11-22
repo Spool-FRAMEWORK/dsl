@@ -97,3 +97,31 @@ Feature: A crawler receives data through a webhook
     When the descriptor is loaded
     Then the load fails
     And the error names "source.configuration.path"
+
+  @DEV-129
+  Scenario: While the circuit of the inbox is open, a delivery is answered 503 with when to send it again
+    Given the inbox opens its circuit after 2 failed writes, for 30s
+    And the inbox cannot be written
+    And "boe-sender" has delivered [{"id": "a-1"}] and then [{"id": "a-2"}] signed with the secret
+    And the inbox can be written again
+    When "boe-sender" delivers [{"id": "a-3"}] signed with the secret
+    Then the delivery is answered 503 with a Retry-After of at most 30 seconds
+    And the inbox is empty
+
+  @DEV-129
+  Scenario: A failure of the inbox while its circuit is closed is answered 503 without Retry-After
+    Given the inbox opens its circuit after 2 failed writes, for 30s
+    And the inbox cannot be written
+    When "boe-sender" delivers [{"id": "a-1"}] signed with the secret
+    Then the delivery is answered 503 without a Retry-After
+
+  @DEV-129
+  Scenario: Once the circuit of the inbox lets calls through again, a delivery is stored
+    Given the inbox opens its circuit after 2 failed writes, for 2s
+    And the inbox cannot be written
+    And "boe-sender" has delivered [{"id": "a-1"}] and then [{"id": "a-2"}] signed with the secret
+    And the inbox can be written again
+    When 2 seconds have passed
+    And "boe-sender" delivers [{"id": "a-3"}] signed with the secret
+    Then the delivery is accepted
+    And the inbox has 1 captured envelope of the source "boe"
