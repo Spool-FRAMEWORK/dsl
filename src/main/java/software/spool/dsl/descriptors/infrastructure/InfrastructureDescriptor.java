@@ -10,6 +10,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 /**
  * The infrastructure of one module. Each kind is resolved when the module asks for it: the piece the module names in
@@ -89,11 +90,15 @@ public final class InfrastructureDescriptor {
         return candidates.stream().findFirst();
     }
 
-    /** The kinds the module has asked for so far. */
     /** The monitor of a piece the module uses, made with the given function the first time the piece is asked for. */
     public PieceMonitor monitorOf(InfrastructureComponentDescriptor piece,
                                   Function<InfrastructureComponentDescriptor, PieceMonitor> monitor) {
-        return monitors.computeIfAbsent(piece.name(), name -> monitor.apply(piece));
+        return monitorOf(piece.name(), () -> monitor.apply(piece));
+    }
+
+    /** The monitor of what the module calls by the given name, such as its source, made the first time it is asked for. */
+    public PieceMonitor monitorOf(String name, Supplier<PieceMonitor> monitor) {
+        return monitors.computeIfAbsent(name, ignored -> monitor.get());
     }
 
     /** The monitors of the pieces the module asked for, in the order it asked for them. */
@@ -101,6 +106,7 @@ public final class InfrastructureDescriptor {
         return List.copyOf(monitors.values());
     }
 
+    /** The kinds the module has asked for so far. */
     public Set<InfrastructureKind> askedKinds() {
         return Set.copyOf(asked);
     }

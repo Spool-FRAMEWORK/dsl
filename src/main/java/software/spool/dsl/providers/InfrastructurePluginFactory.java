@@ -10,6 +10,8 @@ import software.spool.core.adapter.health.MonitoredQuarantineRepository;
 import software.spool.core.port.health.PieceMonitor;
 import software.spool.core.port.quarantine.QuarantineRepository;
 import software.spool.crawler.api.adapter.health.MonitoredInboxWriter;
+import software.spool.crawler.api.adapter.health.MonitoredPollSource;
+import software.spool.crawler.api.port.source.PollSource;
 import software.spool.mounter.api.adapter.health.MonitoredAggregateMetadataRepository;
 import software.spool.mounter.api.adapter.health.MonitoredDataMartRemover;
 import software.spool.mounter.api.adapter.health.MonitoredDataMartWriter;
@@ -30,6 +32,7 @@ import software.spool.dsl.descriptors.infrastructure.InfrastructureComponentDesc
 import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
 import software.spool.dsl.descriptors.module.crawler.source.SourceDescriptor;
 import software.spool.infrastructure.spi.provider.PluginConfiguration;
+import software.spool.infrastructure.spi.provider.PollSourceProvider;
 import software.spool.infrastructure.spi.provider.bus.EventBusProvider;
 import software.spool.infrastructure.spi.provider.dataLake.DataLakeWriterProvider;
 import software.spool.infrastructure.spi.provider.dataLake.PartitionedReaderProvider;
@@ -195,6 +198,17 @@ public final class InfrastructurePluginFactory {
 
     private static PieceMonitor monitorOf(InfrastructureDescriptor infra, InfrastructureComponentDescriptor piece) {
         return infra.monitorOf(piece, PieceMonitors::of);
+    }
+
+    /** The source of a poll crawler, watched as a piece of the module with its own circuit. */
+    public static PollSource<?> pollSource(InfrastructureDescriptor infra, SourceDescriptor source) {
+        return monitored(KnownPlugins.get(PollSourceProvider.class, source.type(), "source.type", "poll source")
+                .create(PluginConfiguration.of(source.configuration())), infra, source);
+    }
+
+    private static <R> PollSource<R> monitored(PollSource<R> created, InfrastructureDescriptor infra, SourceDescriptor source) {
+        return new MonitoredPollSource<>(created,
+                infra.monitorOf(created.sourceId(), () -> PieceMonitors.ofSource(created.sourceId(), source)));
     }
 
     public static Normalizer<?> normalizer(SourceDescriptor source) {

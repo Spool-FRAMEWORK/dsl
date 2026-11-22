@@ -5,6 +5,7 @@ import software.spool.core.port.health.PieceCheckPolicy;
 import software.spool.core.port.health.PieceMonitor;
 import software.spool.dsl.InvalidDescriptorException;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureComponentDescriptor;
+import software.spool.dsl.descriptors.module.crawler.source.SourceDescriptor;
 import software.spool.dsl.reader.ReadableDuration;
 import software.spool.infrastructure.PluginResolver;
 import software.spool.infrastructure.spi.provider.PluginConfiguration;
@@ -25,7 +26,12 @@ final class PieceMonitors {
     }
 
     static PieceMonitor of(InfrastructureComponentDescriptor piece) {
-        return PieceMonitor.of(piece.name(), piece.pluginName(), checkOf(piece), policyOf(piece));
+        return PieceMonitor.of(piece.name(), piece.pluginName(), checkOf(piece), policyOf(piece), piece.circuit());
+    }
+
+    /** The monitor of the source of a crawler, named by its id, which has no check of its own. */
+    static PieceMonitor ofSource(String sourceId, SourceDescriptor source) {
+        return PieceMonitor.of(sourceId, source.type(), Optional.empty(), PieceCheckPolicy.defaults(), source.circuit());
     }
 
     private static Optional<HealthProbe> checkOf(InfrastructureComponentDescriptor piece) {
