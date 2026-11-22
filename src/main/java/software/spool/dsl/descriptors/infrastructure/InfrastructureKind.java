@@ -6,5 +6,6 @@ public enum InfrastructureKind {
     INBOX,
     DATA_LAKE,
     DATA_MART,
-    QUARANTINE_REPOSITORY
+    QUARANTINE_REPOSITORY,
+    AGGREGATE_METADATA
 }

@@ -20,6 +20,13 @@ import software.spool.infrastructure.spi.provider.bus.EventBusProvider;
 import software.spool.infrastructure.spi.provider.dataLake.DataLakeWriterProvider;
 import software.spool.infrastructure.spi.provider.dataLake.PartitionedReaderProvider;
 import software.spool.infrastructure.spi.provider.datamart.DataMartWriterProvider;
+import software.spool.infrastructure.spi.provider.datamart.DataMartRemoverProvider;
+import software.spool.infrastructure.spi.provider.aggregate.AggregateMetadataRepositoryProvider;
+import software.spool.infrastructure.spi.provider.dataLake.PartitionDiscoveryProvider;
+import software.spool.mounter.api.MountMode;
+import software.spool.mounter.api.port.AggregateMetadataRepository;
+import software.spool.mounter.api.port.DataMartRemover;
+import software.spool.mounter.api.port.scaling.PartitionDiscovery;
 import software.spool.mounter.api.port.DataMartWriter;
 import software.spool.mounter.api.port.PartitionedReader;
 import software.spool.core.port.datalake.DataLakeEnvelopeRemover;
@@ -30,6 +37,9 @@ import software.spool.infrastructure.spi.provider.inbox.InboxUpdaterProvider;
 import software.spool.infrastructure.spi.provider.inbox.InboxWriterProvider;
 import software.spool.infrastructure.spi.provider.quarantine.QuarantineRepositoryProvider;
 import software.spool.core.port.datalake.DataLakeWriter;
+
+import java.util.Map;
+import java.util.Optional;
 
 /**
  * Builds the infrastructure ports a module asks for, from the pieces its infrastructure resolves for it. A piece is
@@ -112,6 +122,26 @@ public final class InfrastructurePluginFactory {
         InfrastructureComponentDescriptor dataLake = infra.dataLake();
         return KnownPlugins.get(DataMartWriterProvider.class, dataLake.pluginName(), dataLake.path() + ".type", "data lake mount writer")
                 .create(dataLake.toPluginConfiguration());
+    }
+
+    public static DataMartRemover dataMartRemover(InfrastructureDescriptor infra) {
+        InfrastructureComponentDescriptor dataMart = infra.dataMart();
+        return KnownPlugins.get(DataMartRemoverProvider.class, dataMart.pluginName(), dataMart.path() + ".type", "data mart remover")
+                .create(dataMart.toPluginConfiguration());
+    }
+
+    /** Lists the partitions of the layer of the data lake that a mount of the mode reads. */
+    public static PartitionDiscovery partitionDiscovery(InfrastructureDescriptor infra, MountMode mode) {
+        InfrastructureComponentDescriptor dataLake = infra.dataLake();
+        return KnownPlugins.get(PartitionDiscoveryProvider.class, dataLake.pluginName(), dataLake.path() + ".type", "partition discovery")
+                .create(PluginConfiguration.of(dataLake.configuration(), Map.of(PartitionDiscoveryProvider.MODE, mode)));
+    }
+
+    /** The metadata of the aggregates, when the infrastructure of the module has a piece for it. */
+    public static Optional<AggregateMetadataRepository> aggregateMetadataRepository(InfrastructureDescriptor infra) {
+        return infra.aggregateMetadata().map(piece -> KnownPlugins.get(AggregateMetadataRepositoryProvider.class,
+                        piece.pluginName(), piece.path() + ".type", "aggregate metadata repository")
+                .create(piece.toPluginConfiguration()));
     }
 
     public static QuarantineRepository quarantineRepository(InfrastructureDescriptor infra) {

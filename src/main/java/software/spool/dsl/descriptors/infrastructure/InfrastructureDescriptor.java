@@ -58,6 +58,16 @@ public final class InfrastructureDescriptor {
         return required(InfrastructureKind.QUARANTINE_REPOSITORY);
     }
 
+    /** The piece that keeps the metadata of the aggregates, which a mount may go without. */
+    public Optional<InfrastructureComponentDescriptor> aggregateMetadata() {
+        return find(InfrastructureKind.AGGREGATE_METADATA);
+    }
+
+    /** Whether the module names a piece of the kind in {@code uses}. It does not count as asking for the piece. */
+    public boolean names(InfrastructureKind kind) {
+        return named.containsKey(kind);
+    }
+
     /** The piece of a kind the module may go without: nothing when none is declared. */
     public Optional<InfrastructureComponentDescriptor> find(InfrastructureKind kind) {
         asked.add(kind);
