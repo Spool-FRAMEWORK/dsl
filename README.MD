@@ -589,7 +589,7 @@ data lake; an `AGGREGATION` mount reads silver and writes gold in the data mart.
 
 | Key | Description |
 |---|---|
-| `type` | `POLL` mounts every `schedule.every`, which it requires; `REACTIVE` mounts each time the ingester reports a written partition. |
+| `type` | `POLL` mounts every `schedule.every`, which it requires; `REACTIVE` mounts when what it reads has just been written: a `TRANSFORMATION` mount each time the ingester reports a written partition of bronze, and an `AGGREGATION` mount each time a mounter of silver reports a mounted partition that holds what it reads. |
 | `mode` | `TRANSFORMATION`, from bronze to silver, or `AGGREGATION`, from silver to gold. |
 | `validate` | Validates on read what is promoted to silver, with the validators of each source. Only for `TRANSFORMATION`. `false` by default. |
 | `aggregator` | Full name of a class that implements `MountAggregator` and has a public constructor without arguments. Without it, records are copied as they are. |

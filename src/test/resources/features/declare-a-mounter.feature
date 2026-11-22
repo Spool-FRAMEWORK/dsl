@@ -441,3 +441,36 @@ Feature: A mounter is declared in the descriptor
     Then the descriptor is rejected
     And the error names the module "payments-mounter"
     And the error says "aggregator java.lang.String does not combine records"
+
+  @DEV-113
+  Scenario: A reactive mounter of gold mounts what a reactive mounter of silver has just mounted
+    Given bronze has these "payments" records in the partition "source=payments/eventType=Payment":
+      | id        | amount |
+      | payment-1 | 10     |
+      | payment-2 | 25     |
+    And the descriptor declares the mounter "payments-silver":
+      """
+      type: REACTIVE
+      mode: TRANSFORMATION
+      read:
+        partitions: ["source=payments/eventType=Payment"]
+      write:
+        dataMart: payments
+        partitioning:
+          type: SAME_AS_SOURCE
+      """
+    And the descriptor declares the mounter "payments-total":
+      """
+      type: REACTIVE
+      mode: AGGREGATION
+      aggregator: software.spool.dsl.acceptance.mounter.AmountTotal
+      read:
+        partitions: ["source=payments"]
+      write:
+        dataMart: payments-total
+        partitioning:
+          type: SAME_AS_SOURCE
+      """
+    When the node is started from the descriptor
+    And the ingester reports that it wrote the partition "source=payments/eventType=Payment"
+    Then gold has a single record with the total amount 35 in the data mart "payments-total"
