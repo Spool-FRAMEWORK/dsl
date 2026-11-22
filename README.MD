@@ -430,7 +430,7 @@ modules:
 | `401` / `403` | The sender is not identified, or lacks the role. |
 | `413` | The body is bigger than `maxBodySize`. It is refused before being read whole. |
 | `415` | The `Content-Type` is not the `mediaType` of the source. |
-| `503` | The inbox failed: the sender should send the delivery again. |
+| `503` | The inbox failed: the sender should send the delivery again. While the [circuit](#circuit-of-each-piece-and-source) of the inbox is open, nothing is stored and a `Retry-After` header says how many seconds to wait. |
 
 A delivery sent twice stores its records once, by their idempotency key. With `HMAC_SIGNATURE`, sign a timestamp too:
 without one, a captured request could be sent again.
