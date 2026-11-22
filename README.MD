@@ -583,7 +583,7 @@ data lake; an `AGGREGATION` mount reads silver and writes gold in the data mart.
 | `mode` | `TRANSFORMATION`, from bronze to silver, or `AGGREGATION`, from silver to gold. |
 | `validate` | Validates on read what is promoted to silver, with the validators of each source. Only for `TRANSFORMATION`. `false` by default. |
 | `aggregator` | Full name of a class that implements `MountAggregator` and has a public constructor without arguments. Without it, records are copied as they are. |
-| `read.partitions` | The partition to read, written as a path. A list, with a single partition for now. |
+| `read.partitions` | The partitions to read, written as paths, at least one. The mounter reads them all in one go, so an aggregator combines records of sources that do not hang from the same partition, and a record kept in two partitions that overlap is read once. |
 | `write.dataMart` | The data set the mounter fills, inside its data lake or its data mart. It is not the name of a piece: that goes in `uses`. |
 | `write.partitioning.type` | `SAME_AS_SOURCE` writes each record in the partition it comes with: the one it had in the data lake, or the one the aggregator gave it. `ATTRIBUTES` builds it from `write.partitioning.attributes`, such as `payload.country`. |
 

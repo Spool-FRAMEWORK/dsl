@@ -137,6 +137,89 @@ Feature: A mounter is declared in the descriptor
     And the mounter "payments-total" mounts once
     Then gold has a single record with the total amount 35 in the data mart "payments-total"
 
+  @DEV-96
+  Scenario: A mounter promotes every partition it declares, and nothing else
+    Given bronze has these "payments" records in the partition "source=payments/eventType=Payment":
+      | id        | amount |
+      | payment-1 | 10     |
+    And bronze has these "refunds" records in the partition "source=refunds/eventType=Refund":
+      | id       | amount |
+      | refund-1 | -5     |
+    And bronze has these "fees" records in the partition "source=fees/eventType=Fee":
+      | id    | amount |
+      | fee-1 | 2      |
+    And the descriptor declares the mounter "movements-silver":
+      """
+      type: POLL
+      schedule:
+        every: 1m
+      mode: TRANSFORMATION
+      read:
+        partitions: ["source=payments", "source=refunds"]
+      write:
+        dataMart: movements
+        partitioning:
+          type: SAME_AS_SOURCE
+      """
+    When the node is started from the descriptor
+    And the mounter "movements-silver" mounts once
+    Then silver has the records "payment-1" and "refund-1" in the data mart "movements"
+    And silver does not have the record "fee-1"
+
+  @DEV-96
+  Scenario: A mounter aggregates in gold the records of two sources
+    Given silver has these "payments" records in the data mart "payments" and the partition "source=payments/eventType=Payment":
+      | id        | amount |
+      | payment-1 | 10     |
+      | payment-2 | 25     |
+    And silver has these "refunds" records in the data mart "refunds" and the partition "source=refunds/eventType=Refund":
+      | id       | amount |
+      | refund-1 | -5     |
+    And silver has these "fees" records in the data mart "fees" and the partition "source=fees/eventType=Fee":
+      | id    | amount |
+      | fee-1 | 100    |
+    And the descriptor declares the mounter "net-total":
+      """
+      type: POLL
+      schedule:
+        every: 1m
+      mode: AGGREGATION
+      aggregator: software.spool.dsl.acceptance.mounter.AmountTotal
+      read:
+        partitions: ["source=payments", "source=refunds"]
+      write:
+        dataMart: net-total
+        partitioning:
+          type: SAME_AS_SOURCE
+      """
+    When the node is started from the descriptor
+    And the mounter "net-total" mounts once
+    Then gold has a single record with the total amount 30 in the data mart "net-total"
+
+  @DEV-96
+  Scenario: A record in two partitions that overlap is read once
+    Given silver has these "payments" records in the data mart "payments" and the partition "source=payments/eventType=Payment":
+      | id        | amount |
+      | payment-1 | 10     |
+      | payment-2 | 25     |
+    And the descriptor declares the mounter "payments-total":
+      """
+      type: POLL
+      schedule:
+        every: 1m
+      mode: AGGREGATION
+      aggregator: software.spool.dsl.acceptance.mounter.AmountTotal
+      read:
+        partitions: ["source=payments", "source=payments/eventType=Payment"]
+      write:
+        dataMart: payments-total
+        partitioning:
+          type: SAME_AS_SOURCE
+      """
+    When the node is started from the descriptor
+    And the mounter "payments-total" mounts once
+    Then gold has a single record with the total amount 35 in the data mart "payments-total"
+
   @DEV-81
   Scenario: A reactive mounter promotes a partition when bronze reports it was written
     Given bronze has these "payments" records in the partition "source=payments/eventType=Payment":
@@ -213,8 +296,8 @@ Feature: A mounter is declared in the descriptor
     And the error names the module "payments-mounter"
     And the error says "write.partitioning.attributes is required"
 
-  @DEV-81
-  Scenario: A mounter that reads more than one partition is rejected
+  @DEV-96
+  Scenario: A mounter that reads no partition is rejected
     Given the descriptor declares the mounter "payments-mounter":
       """
       type: POLL
@@ -222,7 +305,7 @@ Feature: A mounter is declared in the descriptor
         every: 1s
       mode: TRANSFORMATION
       read:
-        partitions: ["source=payments", "source=refunds"]
+        partitions: []
       write:
         dataMart: payments
         partitioning:
@@ -231,7 +314,7 @@ Feature: A mounter is declared in the descriptor
     When the node is started from the descriptor
     Then the descriptor is rejected
     And the error names the module "payments-mounter"
-    And the error says "read.partitions must have exactly one partition"
+    And the error says "read.partitions must have at least one partition"
 
   @DEV-81
   Scenario: A mounter to gold that validates is rejected

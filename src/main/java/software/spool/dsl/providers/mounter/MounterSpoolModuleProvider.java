@@ -1,6 +1,7 @@
 package software.spool.dsl.providers.mounter;
 
 import software.spool.core.model.spool.SpoolModule;
+import software.spool.core.model.vo.PartitionKey;
 import software.spool.core.utils.polling.ThreadedPollingScheduler;
 import software.spool.core.port.quarantine.QuarantinedResultWriter;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
@@ -17,6 +18,7 @@ import software.spool.infrastructure.spi.provider.PluginConfiguration;
 import software.spool.mounter.api.MountMode;
 import software.spool.mounter.api.adapter.AlwaysClosedWindowPolicy;
 import software.spool.mounter.api.adapter.AttributesPartitioning;
+import software.spool.mounter.api.adapter.CombinedPartitionsReader;
 import software.spool.mounter.api.adapter.NoOpMountCheckpoint;
 import software.spool.mounter.api.adapter.PartitioningQuarantinedResultWriter;
 import software.spool.mounter.api.adapter.PassThroughMountAggregator;
@@ -33,6 +35,8 @@ import software.spool.mounter.api.port.MountAggregator;
 import software.spool.mounter.api.port.MountPartitioning;
 import software.spool.mounter.api.port.MountTarget;
 import software.spool.mounter.api.port.PartitionedReader;
+
+import java.util.List;
 
 /**
  * Builds the mounter of a descriptor. A {@code TRANSFORMATION} mount reads bronze and writes silver in the data lake,
@@ -64,7 +68,7 @@ public class MounterSpoolModuleProvider implements SpoolModuleProvider {
     public SpoolModule create(PluginConfiguration configuration) {
         MounterDescriptor mounter = configuration.require("descriptor", MounterDescriptor.class);
         InfrastructureDescriptor infrastructure = configuration.require("infrastructure", InfrastructureDescriptor.class);
-        PartitionedReader reader = InfrastructurePluginFactory.partitionedReader(infrastructure);
+        PartitionedReader reader = readerOf(mounter, InfrastructurePluginFactory.partitionedReader(infrastructure));
         return mounter.type() == MounterType.POLL
                 ? polling(mounter, infrastructure, reader)
                 : reactive(mounter, infrastructure, reader);
@@ -120,7 +124,12 @@ public class MounterSpoolModuleProvider implements SpoolModuleProvider {
     }
 
     private static MountTarget targetOf(MounterDescriptor mounter) {
-        return new MountTarget(mounter.write().dataMart(), mounter.read().partition(), mounter.mode(), null, null);
+        return new MountTarget(mounter.write().dataMart(), mounter.read().scope(), mounter.mode(), null, null);
+    }
+
+    private static PartitionedReader readerOf(MounterDescriptor mounter, PartitionedReader dataLake) {
+        List<PartitionKey> partitions = mounter.read().partitions();
+        return partitions.size() == 1 ? dataLake : new CombinedPartitionsReader(dataLake, partitions);
     }
 
     private static DataMartWriter writer(MounterDescriptor mounter, InfrastructureDescriptor infrastructure) {

@@ -70,9 +70,8 @@ public class MounterModuleDescriptorProvider implements ModuleDescriptorProvider
 
     private static MountReadDescriptor mountRead(DescriptorReader read) {
         List<String> partitions = read.required("partitions", ValueParsers.TEXTS);
-        if (partitions.size() != 1) {
-            throw new InvalidDescriptorException(read.path() + ".partitions",
-                    "must have exactly one partition, got " + partitions.size());
+        if (partitions.isEmpty()) {
+            throw new InvalidDescriptorException(read.path() + ".partitions", "must have at least one partition");
         }
         return new MountReadDescriptor(partitions.stream().map(MounterModuleDescriptorProvider::partitionOf).toList());
     }
