@@ -5,12 +5,15 @@ import software.spool.dsl.providers.authentication.RequestAuthenticators;
 import software.spool.core.model.spool.SpoolModule;
 import software.spool.dsl.InvalidDescriptorException;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
+import software.spool.dsl.descriptors.infrastructure.InfrastructureKind;
 import software.spool.dsl.descriptors.module.SpoolModuleDescriptor;
 import software.spool.dsl.providers.SpoolModuleProvider;
 import software.spool.infrastructure.PluginRegistry;
 import software.spool.infrastructure.PluginResolver;
 import software.spool.infrastructure.spi.provider.PluginConfiguration;
 
+import java.util.Comparator;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public final class ModuleProviderRegistry {
@@ -63,6 +66,17 @@ public final class ModuleProviderRegistry {
             throw new InvalidDescriptorException("module '" + descriptor.id() + "'",
                     "of type " + descriptor.moduleType() + " is not supported. Supported types: " + supportedTypes());
         }
+    }
+
+    /** The kinds of piece the module of the descriptor uses, as its provider declares them. */
+    public static Set<InfrastructureKind> uses(SpoolModuleDescriptor descriptor) {
+        PluginConfiguration config = PluginConfiguration.builder().with("descriptor", descriptor).build();
+        return PluginResolver.available(SpoolModuleProvider.class).values().stream()
+                .filter(provider -> provider.supports(config))
+                .min(Comparator.comparingInt(SpoolModuleProvider::priority))
+                .map(provider -> provider.uses(descriptor))
+                .orElseThrow(() -> new InvalidDescriptorException("module '" + descriptor.id() + "'",
+                        "of type " + descriptor.moduleType() + " is not supported. Supported types: " + supportedTypes()));
     }
 
     /** If some provider does support the module, the failure is something else and must not be hidden. */

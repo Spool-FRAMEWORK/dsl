@@ -37,6 +37,7 @@ import software.spool.mounter.api.port.MountTarget;
 import software.spool.mounter.api.port.PartitionedReader;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * Builds the mounter of a descriptor. A {@code TRANSFORMATION} mount reads bronze and writes silver in the data lake,
@@ -55,6 +56,15 @@ public class MounterSpoolModuleProvider implements SpoolModuleProvider {
     @Override
     public int priority() {
         return 10;
+    }
+
+    @Override
+    public Set<InfrastructureKind> uses(SpoolModuleDescriptor descriptor) {
+        MounterDescriptor mounter = (MounterDescriptor) descriptor;
+        return mounter.mode() == MountMode.TRANSFORMATION
+                ? Set.of(InfrastructureKind.EVENT_BUS, InfrastructureKind.DATA_LAKE, InfrastructureKind.QUARANTINE_REPOSITORY)
+                : Set.of(InfrastructureKind.EVENT_BUS, InfrastructureKind.DATA_LAKE, InfrastructureKind.DATA_MART,
+                        InfrastructureKind.QUARANTINE_REPOSITORY);
     }
 
     @Override

@@ -20,6 +20,7 @@ import software.spool.janitor.api.builder.PollingJanitorBuilder;
 import software.spool.infrastructure.spi.SpoolPlugin;
 import software.spool.infrastructure.spi.provider.PluginConfiguration;
 
+import java.util.Set;
 import java.time.Duration;
 import java.util.List;
 
@@ -39,6 +40,12 @@ public class JanitorSpoolModuleProvider implements SpoolModuleProvider {
     @Override
     public int priority() {
         return 10;
+    }
+
+    @Override
+    public Set<InfrastructureKind> uses(SpoolModuleDescriptor descriptor) {
+        return Set.of(InfrastructureKind.EVENT_BUS, InfrastructureKind.INBOX, InfrastructureKind.QUARANTINE_REPOSITORY,
+                InfrastructureKind.DATA_LAKE);
     }
 
     @Override

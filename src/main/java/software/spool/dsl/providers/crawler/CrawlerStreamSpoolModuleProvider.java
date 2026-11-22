@@ -5,6 +5,7 @@ import software.spool.crawler.api.builder.CrawlerBuilderFactory;
 import software.spool.crawler.api.port.source.StreamSource;
 import software.spool.crawler.api.normalizer.Normalizer;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
+import software.spool.dsl.descriptors.infrastructure.InfrastructureKind;
 import software.spool.dsl.descriptors.module.SpoolModuleDescriptor;
 import software.spool.dsl.descriptors.module.crawler.CrawlerDescriptor;
 import software.spool.dsl.descriptors.module.crawler.source.SourceDescriptor;
@@ -15,6 +16,8 @@ import software.spool.infrastructure.spi.SpoolPlugin;
 import software.spool.infrastructure.spi.provider.PluginConfiguration;
 import software.spool.infrastructure.spi.provider.StreamSourceProvider;
 
+import java.util.Set;
+
 
 @SpoolPlugin(SpoolModuleProvider.class)
 public class CrawlerStreamSpoolModuleProvider implements SpoolModuleProvider {
@@ -24,6 +27,11 @@ public class CrawlerStreamSpoolModuleProvider implements SpoolModuleProvider {
 
     @Override
     public int priority() { return 10; }
+
+    @Override
+    public Set<InfrastructureKind> uses(SpoolModuleDescriptor descriptor) {
+        return Set.of(InfrastructureKind.EVENT_BUS, InfrastructureKind.INBOX);
+    }
 
     @Override
     public boolean supports(PluginConfiguration configuration) {

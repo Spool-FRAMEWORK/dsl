@@ -70,6 +70,11 @@ public final class InfrastructureDescriptor {
         return candidates.stream().findFirst();
     }
 
+    /** The kinds the module has asked for so far. */
+    public Set<InfrastructureKind> askedKinds() {
+        return Set.copyOf(asked);
+    }
+
     /** Fails on the first piece named in {@code uses} whose kind the module never asked for. */
     public void checkEveryNamedPieceIsUsed() {
         named.values().stream()

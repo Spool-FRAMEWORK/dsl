@@ -2,6 +2,7 @@ package software.spool.dsl.providers.ingester;
 
 import software.spool.core.model.spool.SpoolModule;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
+import software.spool.dsl.descriptors.infrastructure.InfrastructureKind;
 import software.spool.dsl.descriptors.module.SpoolModuleDescriptor;
 import software.spool.dsl.descriptors.module.ingester.IngesterDescriptor;
 import software.spool.dsl.providers.InfrastructurePluginFactory;
@@ -10,6 +11,8 @@ import software.spool.ingester.api.builder.IngesterBuilderFactory;
 import software.spool.ingester.internal.utils.FlushPolicy;
 import software.spool.infrastructure.spi.SpoolPlugin;
 import software.spool.infrastructure.spi.provider.PluginConfiguration;
+
+import java.util.Set;
 
 @SpoolPlugin(SpoolModuleProvider.class)
 public class IngesterSpoolModuleProvider implements SpoolModuleProvider {
@@ -23,6 +26,11 @@ public class IngesterSpoolModuleProvider implements SpoolModuleProvider {
     @Override
     public int priority() {
         return 10;
+    }
+
+    @Override
+    public Set<InfrastructureKind> uses(SpoolModuleDescriptor descriptor) {
+        return Set.of(InfrastructureKind.EVENT_BUS, InfrastructureKind.INBOX, InfrastructureKind.DATA_LAKE);
     }
 
     @Override
