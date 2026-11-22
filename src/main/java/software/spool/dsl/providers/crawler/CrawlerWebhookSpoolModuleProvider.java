@@ -77,7 +77,7 @@ public class CrawlerWebhookSpoolModuleProvider implements SpoolModuleProvider {
         String role = required(webhook.role(), "webhook.role");
         WebhookCrawlerBuilder builder = infrastructure.watchdog() != null
                 ? CrawlerBuilderFactory.watchdog(infrastructure.watchdog(), crawler.id()).webhook(sourceId)
-                : CrawlerBuilderFactory.webhook(sourceId);
+                : CrawlerBuilderFactory.named(crawler.id()).webhook(sourceId);
         builder.source()
                 .ports(InfrastructurePluginFactory.crawlerPorts(infrastructure))
                 .enrichRules(source.enrichment())

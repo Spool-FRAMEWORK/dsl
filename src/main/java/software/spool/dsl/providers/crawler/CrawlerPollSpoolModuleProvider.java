@@ -47,7 +47,7 @@ public class CrawlerPollSpoolModuleProvider implements SpoolModuleProvider {
         PollSource<?> pollSource = InfrastructurePluginFactory.pollSource(infrastructure, source);
         var builder = infrastructure.watchdog() != null
                 ? CrawlerBuilderFactory.watchdog(infrastructure.watchdog(), crawler.id()).poll(pollSource)
-                : CrawlerBuilderFactory.poll(pollSource);
+                : CrawlerBuilderFactory.named(crawler.id()).poll(pollSource);
         return builder
                 .source()
                     .schedule(PollingConfiguration.of(crawler.schedule()))

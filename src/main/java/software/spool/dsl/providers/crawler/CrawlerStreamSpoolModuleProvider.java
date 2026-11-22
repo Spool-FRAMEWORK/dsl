@@ -49,7 +49,7 @@ public class CrawlerStreamSpoolModuleProvider implements SpoolModuleProvider {
                 .create(PluginConfiguration.of(source.configuration()));
         var builder = infrastructure.watchdog() != null
                 ? CrawlerBuilderFactory.watchdog(infrastructure.watchdog(), crawler.id()).stream(streamSource)
-                : CrawlerBuilderFactory.stream(streamSource);
+                : CrawlerBuilderFactory.named(crawler.id()).stream(streamSource);
         return builder
                 .source()
                     .ports(InfrastructurePluginFactory.crawlerPorts(infrastructure))
