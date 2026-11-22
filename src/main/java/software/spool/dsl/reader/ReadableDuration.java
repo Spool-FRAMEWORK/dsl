@@ -1,14 +1,11 @@
 package software.spool.dsl.reader;
 
 import java.time.Duration;
-import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
  * A duration as a person writes it in the descriptor: ISO 8601 ({@code PT5S}, {@code P30D}) or the short form
@@ -16,14 +13,12 @@ import java.util.regex.Pattern;
  * duration, because nothing would say its unit.
  */
 public final class ReadableDuration {
-    private static final Pattern SHORT_FORM = Pattern.compile("(\\d+)(ms|s|m|h|d)");
     private static final Map<String, ChronoUnit> UNITS_FROM_LARGEST = unitsFromLargest();
 
     private ReadableDuration() {}
 
     public static Optional<Duration> parse(Object raw) {
-        if (!(raw instanceof String text)) return Optional.empty();
-        return shortForm(text.strip()).or(() -> iso(text.strip())).filter(duration -> !duration.isNegative());
+        return software.spool.core.utils.time.ReadableDuration.parse(raw);
     }
 
     /**
@@ -42,24 +37,6 @@ public final class ReadableDuration {
             if (duration.toMillis() % unitMillis == 0) return duration.toMillis() / unitMillis + unit.getKey();
         }
         return duration.toMillis() + "ms";
-    }
-
-    private static Optional<Duration> shortForm(String text) {
-        Matcher matcher = SHORT_FORM.matcher(text);
-        if (!matcher.matches()) return Optional.empty();
-        try {
-            return Optional.of(Duration.of(Long.parseLong(matcher.group(1)), UNITS_FROM_LARGEST.get(matcher.group(2))));
-        } catch (NumberFormatException | ArithmeticException tooLarge) {
-            return Optional.empty();
-        }
-    }
-
-    private static Optional<Duration> iso(String text) {
-        try {
-            return Optional.of(Duration.parse(text));
-        } catch (DateTimeParseException notIso) {
-            return Optional.empty();
-        }
     }
 
     private static Map<String, ChronoUnit> unitsFromLargest() {
