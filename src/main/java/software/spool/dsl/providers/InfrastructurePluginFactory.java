@@ -44,6 +44,13 @@ import software.spool.mounter.api.port.scaling.PartitionDiscovery;
 import software.spool.mounter.api.port.DataMartWriter;
 import software.spool.mounter.api.port.PartitionedReader;
 import software.spool.core.port.datalake.DataLakeEnvelopeRemover;
+import software.spool.core.port.datalake.EnvelopeHeaderRemover;
+import software.spool.core.port.datalake.EnvelopeHeaderWriter;
+import software.spool.core.utils.datalake.IndexedDataLakeEnvelopeRemover;
+import software.spool.core.utils.datalake.IndexedDataLakeWriter;
+import software.spool.infrastructure.spi.Plugin;
+import software.spool.infrastructure.spi.provider.dataLake.EnvelopeHeaderRemoverProvider;
+import software.spool.infrastructure.spi.provider.dataLake.EnvelopeHeaderWriterProvider;
 import software.spool.infrastructure.spi.provider.dataLake.DataLakeEnvelopeRemoverProvider;
 import software.spool.infrastructure.spi.provider.inbox.InboxEnvelopeRemoverProvider;
 import software.spool.infrastructure.spi.provider.inbox.InboxReaderProvider;
@@ -109,16 +116,30 @@ public final class InfrastructurePluginFactory {
                 .create(inbox.toPluginConfiguration()), monitorOf(infra, inbox));
     }
 
+    /** Writes to the data lake, and keeps the header of each envelope when the infrastructure has a store for them. */
     public static DataLakeWriter dataLakeWriter(InfrastructureDescriptor infra) {
         InfrastructureComponentDescriptor dataLake = infra.dataLake();
-        return new MonitoredDataLakeWriter(KnownPlugins.get(DataLakeWriterProvider.class, dataLake.pluginName(), dataLake.path() + ".type", "data lake writer")
+        DataLakeWriter writer = new MonitoredDataLakeWriter(KnownPlugins.get(DataLakeWriterProvider.class, dataLake.pluginName(), dataLake.path() + ".type", "data lake writer")
                 .create(dataLake.toPluginConfiguration()), monitorOf(infra, dataLake));
+        return envelopeHeaders(infra, EnvelopeHeaderWriterProvider.class, "envelope header writer")
+                .<DataLakeWriter>map(headers -> new IndexedDataLakeWriter(writer, headers))
+                .orElse(writer);
     }
 
+    /** Removes from the data lake, and the header of the envelope too when the infrastructure has a store for them. */
     public static DataLakeEnvelopeRemover dataLakeEnvelopeRemover(InfrastructureDescriptor infra) {
         InfrastructureComponentDescriptor dataLake = infra.dataLake();
-        return new MonitoredDataLakeEnvelopeRemover(KnownPlugins.get(DataLakeEnvelopeRemoverProvider.class, dataLake.pluginName(), dataLake.path() + ".type", "data lake envelope remover")
+        DataLakeEnvelopeRemover remover = new MonitoredDataLakeEnvelopeRemover(KnownPlugins.get(DataLakeEnvelopeRemoverProvider.class, dataLake.pluginName(), dataLake.path() + ".type", "data lake envelope remover")
                 .create(dataLake.toPluginConfiguration()), monitorOf(infra, dataLake));
+        return envelopeHeaders(infra, EnvelopeHeaderRemoverProvider.class, "envelope header remover")
+                .<DataLakeEnvelopeRemover>map(headers -> new IndexedDataLakeEnvelopeRemover(headers, remover))
+                .orElse(remover);
+    }
+
+    private static <T> Optional<T> envelopeHeaders(InfrastructureDescriptor infra, Class<? extends Plugin<T>> provider,
+                                                   String label) {
+        return infra.envelopeHeaders().map(piece -> KnownPlugins.get(provider, piece.pluginName(), piece.path() + ".type", label)
+                .create(piece.toPluginConfiguration()));
     }
 
     public static PartitionedReader partitionedReader(InfrastructureDescriptor infra) {

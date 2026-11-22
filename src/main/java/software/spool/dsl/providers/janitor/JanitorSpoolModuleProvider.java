@@ -45,7 +45,7 @@ public class JanitorSpoolModuleProvider implements SpoolModuleProvider {
     @Override
     public Set<InfrastructureKind> uses(SpoolModuleDescriptor descriptor) {
         return Set.of(InfrastructureKind.EVENT_BUS, InfrastructureKind.INBOX, InfrastructureKind.QUARANTINE_REPOSITORY,
-                InfrastructureKind.DATA_LAKE);
+                InfrastructureKind.DATA_LAKE, InfrastructureKind.ENVELOPE_HEADERS);
     }
 
     @Override

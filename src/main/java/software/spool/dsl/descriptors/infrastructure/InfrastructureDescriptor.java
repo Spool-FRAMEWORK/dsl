@@ -67,6 +67,11 @@ public final class InfrastructureDescriptor {
         return find(InfrastructureKind.AGGREGATE_METADATA);
     }
 
+    /** The piece that keeps the headers of the envelopes of the data lake, which the data lake may go without. */
+    public Optional<InfrastructureComponentDescriptor> envelopeHeaders() {
+        return find(InfrastructureKind.ENVELOPE_HEADERS);
+    }
+
     /** Whether the module names a piece of the kind in {@code uses}. It does not count as asking for the piece. */
     public boolean names(InfrastructureKind kind) {
         return named.containsKey(kind);

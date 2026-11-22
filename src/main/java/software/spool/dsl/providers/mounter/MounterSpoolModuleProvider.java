@@ -73,7 +73,8 @@ public class MounterSpoolModuleProvider implements SpoolModuleProvider {
     public Set<InfrastructureKind> uses(SpoolModuleDescriptor descriptor) {
         MounterDescriptor mounter = (MounterDescriptor) descriptor;
         if (mounter.mode() == MountMode.TRANSFORMATION) {
-            return Set.of(InfrastructureKind.EVENT_BUS, InfrastructureKind.DATA_LAKE, InfrastructureKind.QUARANTINE_REPOSITORY);
+            return Set.of(InfrastructureKind.EVENT_BUS, InfrastructureKind.DATA_LAKE, InfrastructureKind.QUARANTINE_REPOSITORY,
+                    InfrastructureKind.ENVELOPE_HEADERS);
         }
         Set<InfrastructureKind> kinds = EnumSet.of(InfrastructureKind.EVENT_BUS, InfrastructureKind.DATA_LAKE,
                 InfrastructureKind.DATA_MART, InfrastructureKind.QUARANTINE_REPOSITORY);

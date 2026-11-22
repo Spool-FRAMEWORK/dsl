@@ -30,7 +30,8 @@ public class IngesterSpoolModuleProvider implements SpoolModuleProvider {
 
     @Override
     public Set<InfrastructureKind> uses(SpoolModuleDescriptor descriptor) {
-        return Set.of(InfrastructureKind.EVENT_BUS, InfrastructureKind.INBOX, InfrastructureKind.DATA_LAKE);
+        return Set.of(InfrastructureKind.EVENT_BUS, InfrastructureKind.INBOX, InfrastructureKind.DATA_LAKE,
+                InfrastructureKind.ENVELOPE_HEADERS);
     }
 
     @Override
