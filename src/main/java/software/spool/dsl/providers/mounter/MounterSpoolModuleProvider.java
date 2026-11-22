@@ -4,6 +4,7 @@ import software.spool.core.model.spool.SpoolModule;
 import software.spool.core.model.vo.PartitionKey;
 import software.spool.core.utils.polling.ThreadedPollingScheduler;
 import software.spool.core.port.quarantine.QuarantinedResultWriter;
+import software.spool.dsl.InvalidDescriptorException;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureKind;
 import software.spool.dsl.descriptors.module.SpoolModuleDescriptor;
@@ -30,13 +31,17 @@ import software.spool.mounter.api.builder.PollingMounterBuilder;
 import software.spool.mounter.api.builder.QuarantineFacet;
 import software.spool.mounter.api.builder.ReactiveMounterBuilder;
 import software.spool.mounter.api.builder.ValidationFacet;
+import software.spool.mounter.api.port.AggregateMetadataRepository;
 import software.spool.mounter.api.port.DataMartWriter;
 import software.spool.mounter.api.port.MountAggregator;
 import software.spool.mounter.api.port.MountPartitioning;
 import software.spool.mounter.api.port.MountTarget;
 import software.spool.mounter.api.port.PartitionedReader;
+import software.spool.mounter.api.port.scaling.PartitionDiscovery;
 
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 
 /**
@@ -44,9 +49,15 @@ import java.util.Set;
  * with the quarantine of the infrastructure; an {@code AGGREGATION} mount reads silver and writes gold in the data
  * mart. What the descriptor does not say keeps the plainest choice: records are copied as they are, every partition
  * is ready to mount and nothing is remembered between rounds.
+ *
+ * <p>An {@code AGGREGATION} mount whose aggregator is incremental keeps the metadata of its aggregates in the
+ * {@code AGGREGATE_METADATA} piece of its infrastructure, when there is one, and then reads in each round only the
+ * closed partitions of silver it has not read yet (ADR-027). A module that names that piece in {@code uses} without
+ * being such a mount is rejected.</p>
  */
 @SpoolPlugin(SpoolModuleProvider.class)
 public class MounterSpoolModuleProvider implements SpoolModuleProvider {
+    private static final String USES = "uses";
 
     @Override
     public String name() {
@@ -61,10 +72,13 @@ public class MounterSpoolModuleProvider implements SpoolModuleProvider {
     @Override
     public Set<InfrastructureKind> uses(SpoolModuleDescriptor descriptor) {
         MounterDescriptor mounter = (MounterDescriptor) descriptor;
-        return mounter.mode() == MountMode.TRANSFORMATION
-                ? Set.of(InfrastructureKind.EVENT_BUS, InfrastructureKind.DATA_LAKE, InfrastructureKind.QUARANTINE_REPOSITORY)
-                : Set.of(InfrastructureKind.EVENT_BUS, InfrastructureKind.DATA_LAKE, InfrastructureKind.DATA_MART,
-                        InfrastructureKind.QUARANTINE_REPOSITORY);
+        if (mounter.mode() == MountMode.TRANSFORMATION) {
+            return Set.of(InfrastructureKind.EVENT_BUS, InfrastructureKind.DATA_LAKE, InfrastructureKind.QUARANTINE_REPOSITORY);
+        }
+        Set<InfrastructureKind> kinds = EnumSet.of(InfrastructureKind.EVENT_BUS, InfrastructureKind.DATA_LAKE,
+                InfrastructureKind.DATA_MART, InfrastructureKind.QUARANTINE_REPOSITORY);
+        if (aggregatesIncrementally(mounter)) kinds.add(InfrastructureKind.AGGREGATE_METADATA);
+        return Set.copyOf(kinds);
     }
 
     @Override
@@ -78,18 +92,41 @@ public class MounterSpoolModuleProvider implements SpoolModuleProvider {
     public SpoolModule create(PluginConfiguration configuration) {
         MounterDescriptor mounter = configuration.require("descriptor", MounterDescriptor.class);
         InfrastructureDescriptor infrastructure = configuration.require("infrastructure", InfrastructureDescriptor.class);
-        PartitionedReader reader = readerOf(mounter, InfrastructurePluginFactory.partitionedReader(infrastructure));
+        checkAggregateMetadataIsUsable(mounter, infrastructure);
+        PartitionedReader dataLake = InfrastructurePluginFactory.partitionedReader(infrastructure);
+        Optional<AggregateMetadataRepository> aggregateMetadata = aggregatesIncrementally(mounter)
+                ? InfrastructurePluginFactory.aggregateMetadataRepository(infrastructure)
+                : Optional.empty();
+        PartitionedReader reader = aggregateMetadata.isPresent() ? dataLake : readerOf(mounter, dataLake);
         return mounter.type() == MounterType.POLL
-                ? polling(mounter, infrastructure, reader)
-                : reactive(mounter, infrastructure, reader);
+                ? polling(mounter, infrastructure, reader, aggregateMetadata)
+                : reactive(mounter, infrastructure, reader, aggregateMetadata);
     }
 
-    private static SpoolModule polling(MounterDescriptor mounter, InfrastructureDescriptor infrastructure, PartitionedReader reader) {
+    private static void checkAggregateMetadataIsUsable(MounterDescriptor mounter, InfrastructureDescriptor infrastructure) {
+        if (!infrastructure.names(InfrastructureKind.AGGREGATE_METADATA)) return;
+        if (mounter.mode() != MountMode.AGGREGATION) {
+            throw new InvalidDescriptorException(USES, "aggregate metadata is only used by an AGGREGATION mount");
+        }
+        if (!aggregatesIncrementally(mounter)) {
+            throw new InvalidDescriptorException(USES, "aggregate metadata needs an incremental aggregator, and "
+                    + mounter.aggregator().map(AggregatorClass::className).orElse(PassThroughMountAggregator.class.getName())
+                    + " is not");
+        }
+    }
+
+    private static boolean aggregatesIncrementally(MounterDescriptor mounter) {
+        return mounter.mode() == MountMode.AGGREGATION && mounter.aggregator().filter(AggregatorClass::isIncremental).isPresent();
+    }
+
+    private static SpoolModule polling(MounterDescriptor mounter, InfrastructureDescriptor infrastructure, PartitionedReader reader,
+                                       Optional<AggregateMetadataRepository> aggregateMetadata) {
         PollingMounterBuilder<Object, Object> builder = MounterBuilderFactory
                 .watchdog(infrastructure.watchdog(), mounter.id())
                 .<Object, Object>polling(reader)
                 .aggregatingWith(aggregator(mounter));
-        configure(mounter, infrastructure, builder.mount(), builder.checkpoint(), builder.quarantine(), builder.validation());
+        configure(mounter, infrastructure, aggregateMetadata, builder.mount(), builder.checkpoint(), builder.quarantine(),
+                builder.validation());
         builder.scheduling()
                 .pollingWith(mounter.schedule().orElseThrow())
                 .scheduledWith(new ThreadedPollingScheduler())
@@ -97,22 +134,29 @@ public class MounterSpoolModuleProvider implements SpoolModuleProvider {
         return builder.build();
     }
 
-    private static SpoolModule reactive(MounterDescriptor mounter, InfrastructureDescriptor infrastructure, PartitionedReader reader) {
+    private static SpoolModule reactive(MounterDescriptor mounter, InfrastructureDescriptor infrastructure, PartitionedReader reader,
+                                        Optional<AggregateMetadataRepository> aggregateMetadata) {
         ReactiveMounterBuilder<Object, Object> builder = MounterBuilderFactory
                 .watchdog(infrastructure.watchdog(), mounter.id())
                 .<Object, Object>reactive(InfrastructurePluginFactory.eventBus(infrastructure))
                 .readingWith(reader)
                 .aggregatingWith(aggregator(mounter));
-        configure(mounter, infrastructure, builder.mount(), builder.checkpoint(), builder.quarantine(), builder.validation());
+        configure(mounter, infrastructure, aggregateMetadata, builder.mount(), builder.checkpoint(), builder.quarantine(),
+                builder.validation());
         return builder.build();
     }
 
-    private static void configure(MounterDescriptor mounter, InfrastructureDescriptor infrastructure, MountFacet<?> mount,
+    private static void configure(MounterDescriptor mounter, InfrastructureDescriptor infrastructure,
+                                  Optional<AggregateMetadataRepository> aggregateMetadata, MountFacet<?> mount,
                                   CheckpointFacet<?> checkpoint, QuarantineFacet<?> quarantine, ValidationFacet<?> validation) {
         mount.onTarget(targetOf(mounter))
                 .writingWith(writer(mounter, infrastructure))
                 .partitioningWith(partitioning(mounter.write().partitioning()));
-        checkpoint.windowPolicy(new AlwaysClosedWindowPolicy()).checkpoint(new NoOpMountCheckpoint());
+        checkpoint.checkpoint(new NoOpMountCheckpoint());
+        aggregateMetadata.ifPresentOrElse(repository -> {
+            checkpoint.aggregatingIncrementally(repository, discoveryOf(mounter, infrastructure));
+            mount.removingWith(InfrastructurePluginFactory.dataMartRemover(infrastructure));
+        }, () -> checkpoint.windowPolicy(new AlwaysClosedWindowPolicy()));
         if (mounter.mode() == MountMode.TRANSFORMATION) {
             quarantine.in(InfrastructurePluginFactory.quarantineRepository(infrastructure))
                     .removingFromDataLakeWith(InfrastructurePluginFactory.dataLakeEnvelopeRemover(infrastructure));
@@ -135,6 +179,13 @@ public class MounterSpoolModuleProvider implements SpoolModuleProvider {
 
     private static MountTarget targetOf(MounterDescriptor mounter) {
         return new MountTarget(mounter.write().dataMart(), mounter.read().scope(), mounter.mode(), null, null);
+    }
+
+    private static PartitionDiscovery discoveryOf(MounterDescriptor mounter, InfrastructureDescriptor infrastructure) {
+        PartitionDiscovery dataLake = InfrastructurePluginFactory.partitionDiscovery(infrastructure, mounter.mode());
+        List<PartitionKey> partitions = mounter.read().partitions();
+        return partitions.size() == 1 ? dataLake
+                : scope -> partitions.stream().flatMap(partition -> dataLake.discover(partition).stream()).distinct().toList();
     }
 
     private static PartitionedReader readerOf(MounterDescriptor mounter, PartitionedReader dataLake) {

@@ -25,7 +25,7 @@ class ModuleUsesTest {
     Path folder;
 
     @ParameterizedTest
-    @ValueSource(strings = {"poll-crawler", "stream-crawler", "webhook-crawler", "ingester", "janitor", "silver-mounter", "gold-mounter"})
+    @ValueSource(strings = {"poll-crawler", "stream-crawler", "webhook-crawler", "ingester", "janitor", "silver-mounter", "gold-mounter", "incremental-gold-mounter"})
     void uses_isWhatBuildingTheModuleAsksFor(String id) {
         SpoolNodeDescriptor node = node();
         DeclaredModule module = node.declaredModules().stream()
@@ -50,6 +50,7 @@ class ModuleUsesTest {
                   lake: {kind: DATA_LAKE, type: FILE_SYSTEM, configuration: {path: "%1$s/lake"}}
                   mart: {kind: DATA_MART, type: FILE_SYSTEM, configuration: {path: "%1$s/mart"}}
                   quarantine: {kind: QUARANTINE_REPOSITORY, type: FILE_SYSTEM, configuration: {path: "%1$s/quarantine"}}
+                  aggregates: {kind: AGGREGATE_METADATA, type: FILE_SYSTEM, configuration: {path: "%1$s/aggregates"}}
                 modules:
                   - crawler:
                       type: POLL
@@ -86,6 +87,14 @@ class ModuleUsesTest {
                       aggregator: software.spool.dsl.acceptance.mounter.AmountTotal
                       read: {partitions: ["source=payments"]}
                       write: {dataMart: payments-total, partitioning: {type: SAME_AS_SOURCE}}
+                  - mounter:
+                      id: incremental-gold-mounter
+                      type: POLL
+                      schedule: {every: 1m}
+                      mode: AGGREGATION
+                      aggregator: software.spool.dsl.acceptance.mounter.IncrementalAmountTotal
+                      read: {partitions: ["source=payments"]}
+                      write: {dataMart: payments-running-total, partitioning: {type: SAME_AS_SOURCE}}
                 """.formatted(root);
         return DescriptorMapper.map(RawSpoolNodeDescriptor.from(
                 new YamlTreeParser().deserialize(yaml.getBytes(StandardCharsets.UTF_8))));

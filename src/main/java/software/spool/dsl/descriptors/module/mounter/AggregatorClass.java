@@ -1,6 +1,7 @@
 package software.spool.dsl.descriptors.module.mounter;
 
 import software.spool.dsl.InvalidDescriptorException;
+import software.spool.mounter.api.port.IncrementalMountAggregator;
 import software.spool.mounter.api.port.MountAggregator;
 
 import java.lang.reflect.Constructor;
@@ -16,6 +17,15 @@ public record AggregatorClass(Constructor<? extends MountAggregator<?>> construc
                     + MountAggregator.class.getSimpleName());
         }
         return new AggregatorClass(constructorWithoutArguments(path, type.asSubclass(aggregatorType())));
+    }
+
+    /** Whether the class folds records into a state a mount can keep, so it can aggregate incrementally. */
+    public boolean isIncremental() {
+        return IncrementalMountAggregator.class.isAssignableFrom(constructor.getDeclaringClass());
+    }
+
+    public String className() {
+        return constructor.getDeclaringClass().getName();
     }
 
     public MountAggregator<?> newAggregator() {

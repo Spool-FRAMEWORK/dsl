@@ -37,10 +37,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Stream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -54,6 +56,8 @@ public class MounterSteps {
     private Path dataLake;
     private Path dataMart;
     private Path quarantine;
+    private Optional<Path> aggregateMetadata = Optional.empty();
+    private final Set<String> mounted = new HashSet<>();
     private boolean withDataLake = true;
     private boolean withDataMart = true;
     private boolean withQuarantine = true;
@@ -75,6 +79,11 @@ public class MounterSteps {
     @Given("a quarantine in a temporary folder of the file system")
     public void aQuarantine() throws IOException {
         quarantine = Files.createTempDirectory("spool-quarantine");
+    }
+
+    @Given("aggregate metadata in a temporary folder of the file system")
+    public void aggregateMetadataInATemporaryFolder() throws IOException {
+        aggregateMetadata = Optional.of(Files.createTempDirectory("spool-aggregates"));
     }
 
     @Given("the descriptor has no quarantine")
@@ -119,6 +128,11 @@ public class MounterSteps {
                 records.asMaps().stream().map(record -> new PartitionedRecord<>(partitionKey, silverRecord(envelope(source, record)))));
     }
 
+    @Given("silver has these {string} records in the data mart {string} and the closed partition {string}:")
+    public void silverHasTheseRecordsInTheClosedPartition(String source, String dataMartName, String partition, DataTable records) {
+        silverHasTheseRecords(source, dataMartName, partition + "/source=" + source, records);
+    }
+
     @Given("the descriptor declares the mounter {string}:")
     public void theDescriptorDeclaresTheMounter(String id, String mounter) {
         declareMounter(id, "", mounter);
@@ -127,6 +141,11 @@ public class MounterSteps {
     @Given("the descriptor declares the mounter {string} that uses {string}:")
     public void theDescriptorDeclaresTheMounterThatUses(String id, String piece, String mounter) {
         declareMounter(id, "      uses: [" + piece + "]\n", mounter);
+    }
+
+    @Given("the descriptor declares the mounter {string} that uses the aggregate metadata:")
+    public void theDescriptorDeclaresTheMounterThatUsesTheAggregateMetadata(String id, String mounter) {
+        declareMounter(id, "      uses: [aggregates]\n", mounter);
     }
 
     @When("the node is started from the descriptor")
@@ -139,8 +158,12 @@ public class MounterSteps {
     }
 
     @When("the mounter {string} mounts once")
-    public void theMounterMountsOnce(String id) {
+    public void theMounterMountsOnce(String id) throws IOException {
         descriptor.loaded();
+        if (!mounted.add(id)) {
+            restartTheNode();
+            return;
+        }
         eventually(() -> assertThat(filesUnder(silver()).size() > silverFilesBeforeStart || goldWasWritten())
                 .as("files written by " + id).isTrue());
     }
@@ -211,6 +234,14 @@ public class MounterSteps {
         assertThat(filesUnder(dataMarts.get(piece).resolve("gold").resolve(dataMartName))).isEmpty();
     }
 
+    @Then("the aggregate metadata of {string} names the two partitions of silver")
+    public void theAggregateMetadataNamesTheTwoPartitionsOfSilver(String dataMartName) {
+        Path aggregates = aggregateMetadata.orElseThrow().resolve("gold").resolve(dataMartName).resolve("aggregates");
+        eventually(() -> assertThat(filesUnder(aggregates)).singleElement().satisfies(file ->
+                assertThat((List<?>) PayloadDeserializerFactory.json().asMap().deserialize(read(file).getBytes()).get("sources"))
+                        .hasSize(2)));
+    }
+
     @Then("the record {string} is in the quarantine")
     public void theRecordIsInTheQuarantine(String record) {
         eventually(() -> assertThat(filesUnder(quarantine).stream().map(MounterSteps::read))
@@ -237,6 +268,12 @@ public class MounterSteps {
         node.ifPresent(SpoolNode::stop);
     }
 
+    /** A POLL mounter has its first round when it starts, so starting the node again gives it one more round. */
+    private void restartTheNode() throws IOException {
+        node.ifPresent(SpoolNode::stop);
+        node = Optional.of(startedNode(descriptor.loaded()));
+    }
+
     private static SpoolNode startedNode(SpoolNodeDescriptor loaded) throws IOException {
         SpoolNode started = SpoolNode.create(freePort());
         loaded.declaredModules().forEach(module ->
@@ -252,7 +289,8 @@ public class MounterSteps {
         if (withDataLake) yaml.append(piece("lake", "DATA_LAKE", dataLake));
         if (withDataMart) yaml.append(piece("mart", "DATA_MART", dataMart));
         dataMarts.forEach((name, path) -> yaml.append(piece(name, "DATA_MART", path)));
-        if (withQuarantine) yaml.append(piece("quarantine", "QUARANTINE_REPOSITORY", quarantine));
+        if (withQuarantine && quarantine != null) yaml.append(piece("quarantine", "QUARANTINE_REPOSITORY", quarantine));
+        aggregateMetadata.ifPresent(path -> yaml.append(piece("aggregates", "AGGREGATE_METADATA", path)));
         descriptor.write(yaml.append("modules:\n").append(mounters).toString());
     }
 
