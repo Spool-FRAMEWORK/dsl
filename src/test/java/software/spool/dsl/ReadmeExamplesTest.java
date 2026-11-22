@@ -19,6 +19,7 @@ import software.spool.infrastructure.spi.provider.dataLake.DataLakeWriterProvide
 import software.spool.infrastructure.spi.provider.datamart.DataMartWriterProvider;
 import software.spool.infrastructure.spi.provider.inbox.InboxWriterProvider;
 import software.spool.infrastructure.spi.provider.quarantine.QuarantineRepositoryProvider;
+import software.spool.infrastructure.spi.provider.aggregate.AggregateMetadataRepositoryProvider;
 import software.spool.infrastructure.spi.provider.serde.NormalizerProvider;
 
 import java.io.IOException;
@@ -133,6 +134,7 @@ class ReadmeExamplesTest {
             case DATA_LAKE -> KnownPlugins.get(DataLakeWriterProvider.class, piece.type(), path, "data lake");
             case DATA_MART -> KnownPlugins.get(DataMartWriterProvider.class, piece.type(), path, "data mart");
             case QUARANTINE_REPOSITORY -> KnownPlugins.get(QuarantineRepositoryProvider.class, piece.type(), path, "quarantine repository");
+            case AGGREGATE_METADATA -> KnownPlugins.get(AggregateMetadataRepositoryProvider.class, piece.type(), path, "aggregate metadata repository");
         }
     }
 }

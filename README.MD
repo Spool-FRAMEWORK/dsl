@@ -40,7 +40,7 @@ Spool.yaml
 ▼
 SpoolNodeDSL.fromDescriptor(path)  →  SpoolNode
 │
-├── infrastructure  →  named pieces: EVENT_BUS · INBOX · DATA_LAKE · DATA_MART · QUARANTINE_REPOSITORY
+├── infrastructure  →  named pieces: EVENT_BUS · INBOX · DATA_LAKE · DATA_MART · QUARANTINE_REPOSITORY · AGGREGATE_METADATA
 │
 └── SpoolModuleDescriptor[]
     ├── CrawlerDescriptor   →  CrawlerBuilderFactory  →  Crawler
@@ -216,6 +216,7 @@ with `type`, and that plugin's keys in `configuration`. The types and their keys
 | `DATA_LAKE` | Where the ingester writes bronze. The mounter reads it and writes silver into it, and the janitor writes back to it what was quarantined from bronze. |
 | `DATA_MART` | Where mounters to gold write. Only they need it. |
 | `QUARANTINE_REPOSITORY` | Where the janitor and the mounters to silver keep what is in quarantine (see [Quarantine](#quarantine)). |
+| `AGGREGATE_METADATA` | Where a mounter to gold with an incremental aggregator keeps the state and the sources of each aggregate (see [Aggregating incrementally](#aggregating-incrementally)). It is optional. |
 
 A module takes the only piece of each kind it needs, so with one piece of each kind there is nothing else to write.
 With several pieces of a kind, each module that needs that kind names its piece in `uses`:
@@ -600,6 +601,34 @@ A mounter to silver always has a quarantine, so it needs a `QUARANTINE_REPOSITOR
 validation, or that lacks a partition attribute, goes to it and is removed from bronze. Writing silver needs a data
 lake type that mounters can write to: `FILE_SYSTEM` today.
 
+#### Aggregating incrementally
+
+An `AGGREGATION` mounter whose `aggregator` implements `IncrementalMountAggregator` can add what is new to what it
+aggregated before, instead of reading silver whole in each round
+([ADR-027](https://linear.app/javier-castilla/document/adr-027-el-mounter-agrega-de-forma-incremental-con-un-agregador-que-c8a5f0f44866)).
+It does so when its infrastructure has an `AGGREGATE_METADATA` piece, the only one of its kind or the one it names in
+`uses`:
+
+```yaml
+infrastructure:
+  bus: {kind: EVENT_BUS, type: IN_MEMORY}
+  lake: {kind: DATA_LAKE, type: FILE_SYSTEM, configuration: {path: /data/lake}}
+  gold: {kind: DATA_MART, type: FILE_SYSTEM, configuration: {path: /data/gold}}
+  aggregates: {kind: AGGREGATE_METADATA, type: FILE_SYSTEM, configuration: {path: /data/aggregates}}
+```
+
+- Each round reads only the partitions of silver that are closed and not read yet. A partition is closed 15 minutes
+  after its last date entry ends, so `year=2026/month=11/day=17/hour=10` is read from 11:15 UTC on. Records that
+  reach it later do not reach gold.
+- The piece keeps, for each aggregate, the partitions of silver it comes from, how many records it has added, when it
+  changed and the state of its aggregator, in JSON. The result of an aggregate that changes replaces the one before
+  it, so gold has a single result per aggregate.
+- If the partitions read include one without a date, such as `country=ES`, the mounter aggregates them all again in
+  every round.
+- A mounter that names the piece in `uses` with an aggregator that is not incremental, or that is a `TRANSFORMATION`
+  mount, stops the load.
+- Without the piece, the mounter aggregates everything in every round, as any other.
+
 ---
 
 ### Authentication
@@ -733,6 +762,8 @@ infrastructure:
 | `DATA_MART` | `FILE_SYSTEM` | `path` |
 | | `RAW_FILE_SYSTEM` | `path` |
 | `QUARANTINE_REPOSITORY` | `FILE_SYSTEM` | `path` |
+| `AGGREGATE_METADATA` | `FILE_SYSTEM` | `path` |
+| | `S3` | `bucket`, `region`, `endpoint` |
 
 Every port, its types and their keys are in the [catalogue of adapters](https://github.com/Spool-FRAMEWORK/infrastructure#available-adapters)
 of `spool-infrastructure`. There is no relational backend (no PostgreSQL, no JDBC).
