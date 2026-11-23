@@ -677,6 +677,7 @@ data lake; an `AGGREGATION` mount reads silver and writes gold in the data mart.
 | `validate` | Validates on read what is promoted to silver, with the validators of each source. Only for `TRANSFORMATION`. `false` by default. |
 | `aggregator` | Full name of a class that implements `MountAggregator` and has a public constructor without arguments. Without it, records are copied as they are. |
 | `read.partitions` | The partitions to read, written as paths, at least one. The mounter reads them all in one go, so an aggregator combines records of sources that do not hang from the same partition, and a record kept in two partitions that overlap is read once. |
+| `read.closingMargin` | How long after its last date entry ends a partition of silver is closed and read, for a mounter that aggregates incrementally. 15 minutes by default (see [Aggregating incrementally](#aggregating-incrementally)). |
 | `write.dataMart` | The data set the mounter fills, inside its data lake or its data mart. It is not the name of a piece: that goes in `uses`. |
 | `write.partitioning.type` | `SAME_AS_SOURCE` writes each record in the partition it comes with: the one it had in the data lake, or the one the aggregator gave it. `ATTRIBUTES` builds it from `write.partitioning.attributes`, such as `payload.country`. |
 
@@ -703,6 +704,9 @@ infrastructure:
 - Each round reads only the partitions of silver that are closed and not read yet. A partition is closed 15 minutes
   after its last date entry ends, so `year=2026/month=11/day=17/hour=10` is read from 11:15 UTC on. Records that
   reach it later do not reach gold.
+- `read.closingMargin` changes those 15 minutes, with a duration such as `30m` or `1h`. `0s` closes a partition as
+  soon as its last date entry ends. A mounter that does not aggregate incrementally, or a negative margin, stops the
+  load.
 - The piece keeps, for each aggregate, the partitions of silver it comes from, how many records it has added, when it
   changed and the state of its aggregator, in JSON. The result of an aggregate that changes replaces the one before
   it, so gold has a single result per aggregate.
