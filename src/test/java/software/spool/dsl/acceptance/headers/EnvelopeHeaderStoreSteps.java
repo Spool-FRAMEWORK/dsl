@@ -24,6 +24,7 @@ import software.spool.core.model.vo.PartitionKeySchema;
 import software.spool.core.model.vo.PartitionedEnvelope;
 import software.spool.dsl.SpoolNodeDSL;
 import software.spool.dsl.acceptance.DescriptorUnderTest;
+import software.spool.dsl.acceptance.MounterSteps;
 import software.spool.dsl.acceptance.quarantine.TestCallerRequestAuthenticatorProvider;
 import software.spool.dsl.descriptors.SpoolNodeDescriptor;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
@@ -60,6 +61,7 @@ public class EnvelopeHeaderStoreSteps {
     private static final String RESOLVE_ROLE = "quarantine-resolver";
 
     private final DescriptorUnderTest descriptor;
+    private final MounterSteps mounterSteps;
     private final TestEnvelopeHeaderStore store = TestEnvelopeHeaderStore.shared();
     private final List<IdempotencyKey> captured = new ArrayList<>();
     private Path inbox;
@@ -68,8 +70,9 @@ public class EnvelopeHeaderStoreSteps {
     private int port;
     private Optional<SpoolNode> node = Optional.empty();
 
-    public EnvelopeHeaderStoreSteps(DescriptorUnderTest descriptor) {
+    public EnvelopeHeaderStoreSteps(DescriptorUnderTest descriptor, MounterSteps mounterSteps) {
         this.descriptor = descriptor;
+        this.mounterSteps = mounterSteps;
     }
 
     @Given("an inbox, a data lake and a quarantine in temporary folders of the file system")
@@ -126,6 +129,11 @@ public class EnvelopeHeaderStoreSteps {
                 """);
     }
 
+    @Given("the node declares a store of envelope headers that refuses every header, and an ingester")
+    public void aStoreThatRefusesEveryHeaderAndAnIngester() {
+        descriptor.write(infrastructure(Optional.of(FailingEnvelopeHeaderWriterProvider.TYPE)) + ingester());
+    }
+
     @Given("the node declares a store of envelope headers of type {string}")
     public void aStoreOfType(String type) {
         descriptor.write(infrastructure(Optional.of(type)) + ingester());
@@ -158,8 +166,8 @@ public class EnvelopeHeaderStoreSteps {
     }
 
     @When("the ingester writes them to the data lake")
-    public void theIngesterWritesThemToTheDataLake() {
-        startTheNode();
+    public void theIngesterWritesThemToTheDataLake() throws IOException {
+        mounterSteps.theNodeIsStartedFromTheDescriptor();
         SpoolNodeDescriptor loaded = descriptor.loaded();
         var bus = InfrastructurePluginFactory.eventBus(InfrastructureDescriptor.unnamed(loaded.watchdog(), loaded.infrastructure()));
         captured.forEach(key -> bus.publish(EnvelopeStored.builder().idempotencyKey(key).build()));

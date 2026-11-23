@@ -48,3 +48,19 @@ Feature: The descriptor gives the data lake a store of envelope headers
     When the node is started from the descriptor
     Then the descriptor is rejected
     And the error names the path "infrastructure.headers.type"
+
+  @DEV-124
+  Scenario: The health of the node lists the store of envelope headers that the ingester uses
+    Given the node declares the store of envelope headers and an ingester
+    When the node is started from the descriptor
+    And the health of the node is asked
+    Then the module "orders-ingester" reports the piece "headers" of type "TEST_HEADERS" as HEALTHY
+
+  @DEV-124
+  Scenario: A store that refuses the headers leaves its piece unhealthy, and the envelopes stay in the data lake
+    Given the node declares a store of envelope headers that refuses every header, and an ingester
+    And the inbox has the captured envelopes "order-1" and "order-2" of the source "orders"
+    When the ingester writes them to the data lake
+    And the health of the node is asked
+    Then the module "orders-ingester" reports the piece "headers" of type "FAILING_HEADERS" as UNHEALTHY
+    And the data lake has the envelopes "order-1" and "order-2"

@@ -2,6 +2,8 @@ package software.spool.dsl.providers;
 
 import software.spool.core.adapter.health.MonitoredDataLakeEnvelopeRemover;
 import software.spool.core.adapter.health.MonitoredDataLakeWriter;
+import software.spool.core.adapter.health.MonitoredEnvelopeHeaderRemover;
+import software.spool.core.adapter.health.MonitoredEnvelopeHeaderWriter;
 import software.spool.core.adapter.health.MonitoredEventBus;
 import software.spool.core.adapter.health.MonitoredInboxEnvelopeRemover;
 import software.spool.core.adapter.health.MonitoredInboxReader;
@@ -64,6 +66,7 @@ import software.spool.core.port.datalake.DataLakeWriter;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.BiFunction;
 
 /**
  * Builds the infrastructure ports a module asks for, from the pieces its infrastructure resolves for it. A piece is
@@ -124,7 +127,7 @@ public final class InfrastructurePluginFactory {
         InfrastructureComponentDescriptor dataLake = infra.dataLake();
         DataLakeWriter writer = new MonitoredDataLakeWriter(KnownPlugins.get(DataLakeWriterProvider.class, dataLake.pluginName(), dataLake.path() + ".type", "data lake writer")
                 .create(dataLake.toPluginConfiguration()), monitorOf(infra, dataLake));
-        return envelopeHeaders(infra, EnvelopeHeaderWriterProvider.class, "envelope header writer")
+        return envelopeHeaders(infra, EnvelopeHeaderWriterProvider.class, "envelope header writer", MonitoredEnvelopeHeaderWriter::new)
                 .<DataLakeWriter>map(headers -> new IndexedDataLakeWriter(writer, headers))
                 .orElse(writer);
     }
@@ -134,15 +137,15 @@ public final class InfrastructurePluginFactory {
         InfrastructureComponentDescriptor dataLake = infra.dataLake();
         DataLakeEnvelopeRemover remover = new MonitoredDataLakeEnvelopeRemover(KnownPlugins.get(DataLakeEnvelopeRemoverProvider.class, dataLake.pluginName(), dataLake.path() + ".type", "data lake envelope remover")
                 .create(dataLake.toPluginConfiguration()), monitorOf(infra, dataLake));
-        return envelopeHeaders(infra, EnvelopeHeaderRemoverProvider.class, "envelope header remover")
+        return envelopeHeaders(infra, EnvelopeHeaderRemoverProvider.class, "envelope header remover", MonitoredEnvelopeHeaderRemover::new)
                 .<DataLakeEnvelopeRemover>map(headers -> new IndexedDataLakeEnvelopeRemover(headers, remover))
                 .orElse(remover);
     }
 
     private static <T> Optional<T> envelopeHeaders(InfrastructureDescriptor infra, Class<? extends Plugin<T>> provider,
-                                                   String label) {
-        return infra.envelopeHeaders().map(piece -> KnownPlugins.get(provider, piece.pluginName(), piece.path() + ".type", label)
-                .create(piece.toPluginConfiguration()));
+                                                   String label, BiFunction<T, PieceMonitor, T> monitored) {
+        return infra.envelopeHeaders().map(piece -> monitored.apply(KnownPlugins.get(provider, piece.pluginName(), piece.path() + ".type", label)
+                .create(piece.toPluginConfiguration()), monitorOf(infra, piece)));
     }
 
     public static PartitionedReader partitionedReader(InfrastructureDescriptor infra) {
