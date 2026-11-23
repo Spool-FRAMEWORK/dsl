@@ -27,6 +27,7 @@ import java.security.GeneralSecurityException;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
@@ -44,6 +45,7 @@ public class WebhookSteps {
     private static final String SIGNATURE_HEADER = "X-Signature-256";
     private static final String TIMESTAMP_HEADER = "X-Signature-Timestamp";
     private static final String JSON = "application/json";
+    private static final String RETRY_AFTER = "Retry-After";
 
     private final DescriptorUnderTest descriptor;
     private final HttpClient client = HttpClient.newHttpClient();
@@ -57,6 +59,7 @@ public class WebhookSteps {
     private Optional<String> path = Optional.empty();
     private Optional<Integer> maxBodySize = Optional.empty();
     private String sourceId = "boe";
+    private String inboxCircuit = "";
     private Optional<SpoolNode> node = Optional.empty();
 
     public WebhookSteps(DescriptorUnderTest descriptor) {
@@ -128,6 +131,35 @@ public class WebhookSteps {
         writeDescriptor();
     }
 
+    @Given("the inbox opens its circuit after {int} failed writes, for {int}s")
+    public void theInboxOpensItsCircuitAfter(int failedWrites, int seconds) {
+        inboxCircuit = ", circuitFailureRate: 100%, circuitMinimumCalls: " + failedWrites + ", circuitOpenFor: " + seconds + "s";
+        writeDescriptor();
+    }
+
+    @Given("the inbox cannot be written")
+    public void theInboxCannotBeWritten() throws IOException {
+        deleteTheInbox();
+        Files.createFile(inbox);
+    }
+
+    @Given("the inbox can be written again")
+    public void theInboxCanBeWrittenAgain() throws IOException {
+        Files.delete(inbox);
+        Files.createDirectory(inbox);
+    }
+
+    @Given("^\"([^\"]*)\" has delivered (\\[.*]) and then (\\[.*]) signed with the secret$")
+    public void hasDelivered(String sender, String first, String second) {
+        deliver(first, JSON, Optional.of(SECRET), Instant.now());
+        deliver(second, JSON, Optional.of(SECRET), Instant.now());
+    }
+
+    @When("{int} seconds have passed")
+    public void secondsHavePassed(int seconds) throws InterruptedException {
+        Thread.sleep(Duration.ofSeconds(seconds).toMillis());
+    }
+
     @When("^\"([^\"]*)\" delivers (\\[.*]) signed with the secret$")
     public void deliversSigned(String sender, String body) {
         deliver(body, JSON, Optional.of(SECRET), Instant.now());
@@ -195,6 +227,19 @@ public class WebhookSteps {
         assertThat(last().statusCode()).isEqualTo(415);
     }
 
+    @Then("the delivery is answered 503 with a Retry-After of at most {int} seconds")
+    public void answeredWithRetryAfter(int seconds) {
+        assertThat(last().statusCode()).as(last().body()).isEqualTo(503);
+        assertThat(last().headers().firstValue(RETRY_AFTER)).hasValueSatisfying(value ->
+                assertThat(Integer.parseInt(value)).isBetween(1, seconds));
+    }
+
+    @Then("the delivery is answered 503 without a Retry-After")
+    public void answeredWithoutRetryAfter() {
+        assertThat(last().statusCode()).as(last().body()).isEqualTo(503);
+        assertThat(last().headers().firstValue(RETRY_AFTER)).isEmpty();
+    }
+
     @Then("the inbox has {int} captured envelope(s) of the source {string}")
     public void theInboxHasCapturedEnvelopes(int count, String source) {
         assertThat(captured()).hasSize(count)
@@ -227,7 +272,7 @@ public class WebhookSteps {
                 .append("      roles: ").append(role).append('\n')
                 .append("infrastructure:\n  bus: {kind: EVENT_BUS, type: IN_MEMORY}\n")
                 .append("  inbox: {kind: INBOX, type: FILE_SYSTEM, configuration: {path: \"")
-                .append(inbox.toString().replace('\\', '/')).append("\"}}\n");
+                .append(inbox.toString().replace('\\', '/')).append("\"").append(inboxCircuit).append("}}\n");
         if (webhookAuthentication.isEmpty() && webhookRole.isEmpty() && path.isEmpty()) {
             descriptor.write(yaml.append("modules: []\n").toString());
             return;
@@ -272,6 +317,12 @@ public class WebhookSteps {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new IllegalStateException(e);
+        }
+    }
+
+    private void deleteTheInbox() throws IOException {
+        try (Stream<Path> paths = Files.walk(inbox)) {
+            for (Path path : paths.sorted(Comparator.reverseOrder()).toList()) Files.delete(path);
         }
     }
 
