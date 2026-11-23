@@ -18,10 +18,12 @@ import software.spool.core.model.vo.PartitionKey;
 import software.spool.core.model.vo.PartitionedEnvelope;
 import software.spool.core.adapter.jackson.PayloadDeserializerFactory;
 import software.spool.core.adapter.jackson.RecordSerializerFactory;
+import software.spool.core.port.quarantine.QuarantinedResultWriter;
 import software.spool.dsl.descriptors.SpoolNodeDescriptor;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
 import software.spool.dsl.providers.InfrastructurePluginFactory;
 import software.spool.dsl.acceptance.mounter.Payment;
+import software.spool.dsl.providers.mounter.QuarantinedResultWriters;
 import software.spool.dsl.registry.ModuleProviderRegistry;
 import software.spool.infrastructure.adapter.dataLake.filesystem.FileSystemDataLakeWriter;
 import software.spool.infrastructure.adapter.datamart.FileSystemDataMartWriter;
@@ -176,6 +178,15 @@ public class MounterSteps {
                 .idempotencyKey(IdempotencyKey.of("reported-" + partition))
                 .partitionKey(partitionOf(BRONZE_DATE_ENTRIES + "/" + partition))
                 .build());
+    }
+
+    @When("the result of {string} with the id {string} and the amount {long} is taken out of the quarantine in the partition {string}")
+    public void theResultIsTakenOutOfTheQuarantine(String dataMartName, String id, long amount, String partition) {
+        QuarantinedResultWriter writer = QuarantinedResultWriters.of(descriptor.loaded()).create().stream()
+                .filter(candidate -> candidate.dataMart().equals(dataMartName))
+                .findFirst().orElseThrow();
+        Envelope envelope = envelope("payments", Map.of("id", id, "amount", String.valueOf(amount)));
+        writer.write(partitionOf(partition), RecordSerializerFactory.record().serialize(silverRecord(envelope).toMap()));
     }
 
     @Then("silver has the records {string} and {string} in the data mart {string}")

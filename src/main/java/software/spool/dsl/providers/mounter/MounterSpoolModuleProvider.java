@@ -175,7 +175,7 @@ public class MounterSpoolModuleProvider implements SpoolModuleProvider {
      */
     public static QuarantinedResultWriter quarantinedResultWriter(MounterDescriptor mounter, InfrastructureDescriptor infrastructure) {
         return new PartitioningQuarantinedResultWriter(targetOf(mounter), partitioning(mounter.write().partitioning()),
-                writer(mounter, infrastructure));
+                writer(mounter, infrastructure), InfrastructurePluginFactory.tracedEventPublisher(infrastructure));
     }
 
     private static MountTarget targetOf(MounterDescriptor mounter) {

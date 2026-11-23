@@ -474,3 +474,35 @@ Feature: A mounter is declared in the descriptor
     When the node is started from the descriptor
     And the ingester reports that it wrote the partition "source=payments/eventType=Payment"
     Then gold has a single record with the total amount 35 in the data mart "payments-total"
+
+  @DEV-132
+  Scenario: A reactive mounter of gold mounts when a result of silver is taken out of the quarantine
+    Given silver has these "payments" records in the data mart "payments" and the partition "source=payments":
+      | id        | amount |
+      | payment-1 | 10     |
+    And the descriptor declares the mounter "payments-silver":
+      """
+      type: REACTIVE
+      mode: TRANSFORMATION
+      read:
+        partitions: ["source=payments/eventType=Payment"]
+      write:
+        dataMart: payments
+        partitioning:
+          type: SAME_AS_SOURCE
+      """
+    And the descriptor declares the mounter "payments-total":
+      """
+      type: REACTIVE
+      mode: AGGREGATION
+      aggregator: software.spool.dsl.acceptance.mounter.AmountTotal
+      read:
+        partitions: ["source=payments"]
+      write:
+        dataMart: payments-total
+        partitioning:
+          type: SAME_AS_SOURCE
+      """
+    When the node is started from the descriptor
+    And the result of "silver/payments" with the id "payment-2" and the amount 25 is taken out of the quarantine in the partition "source=payments"
+    Then gold has a single record with the total amount 35 in the data mart "payments-total"
