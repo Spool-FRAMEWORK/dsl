@@ -39,6 +39,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -129,6 +131,14 @@ public class MounterSteps {
         PartitionKey partitionKey = partitionOf(partition);
         new FileSystemDataMartWriter(dataLake).write(MountTarget.transformation(dataMartName, partitionKey),
                 records.asMaps().stream().map(record -> new PartitionedRecord<>(partitionKey, silverRecord(envelope(source, record)))));
+    }
+
+    @Given("silver has these {string} records in the data mart {string} and the partition of the previous hour:")
+    public void silverHasTheseRecordsInThePartitionOfThePreviousHour(String source, String dataMartName, DataTable records) {
+        ZonedDateTime previousHour = ZonedDateTime.now(ZoneOffset.UTC).minusHours(1);
+        String partition = String.format("year=%d/month=%02d/day=%02d/hour=%02d", previousHour.getYear(),
+                previousHour.getMonthValue(), previousHour.getDayOfMonth(), previousHour.getHour());
+        silverHasTheseRecordsInTheClosedPartition(source, dataMartName, partition, records);
     }
 
     @Given("silver has these {string} records in the data mart {string} and the closed partition {string}:")

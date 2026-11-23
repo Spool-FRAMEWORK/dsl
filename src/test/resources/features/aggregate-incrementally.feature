@@ -60,3 +60,79 @@ Feature: The descriptor gives a mounter of gold aggregate metadata to aggregate 
     When the node is started from the descriptor
     Then the descriptor is rejected
     And the error says "aggregate metadata is only used by an AGGREGATION mount"
+
+  @DEV-133
+  Scenario: A partition of silver is not aggregated until its closing margin has passed
+    Given silver has these "payments" records in the data mart "payments" and the closed partition "year=2026/month=11/day=17/hour=10":
+      | id        | amount |
+      | payment-1 | 10     |
+      | payment-2 | 25     |
+    And silver has these "payments" records in the data mart "payments" and the partition of the previous hour:
+      | id        | amount |
+      | payment-3 | 5      |
+    And the descriptor declares the mounter "payments-total" that uses the aggregate metadata:
+      """
+      type: POLL
+      schedule: {every: 1m}
+      mode: AGGREGATION
+      aggregator: software.spool.dsl.acceptance.mounter.IncrementalAmountTotal
+      read: {partitions: ["source=payments"], closingMargin: 2h}
+      write: {dataMart: payments-total, partitioning: {type: SAME_AS_SOURCE}}
+      """
+    When the node is started from the descriptor
+    And the mounter "payments-total" mounts once
+    Then gold has a single record with the total amount 35 in the data mart "payments-total"
+
+  @DEV-133
+  Scenario: A closing margin of zero aggregates a partition as soon as its date has ended
+    Given silver has these "payments" records in the data mart "payments" and the closed partition "year=2026/month=11/day=17/hour=10":
+      | id        | amount |
+      | payment-1 | 10     |
+      | payment-2 | 25     |
+    And silver has these "payments" records in the data mart "payments" and the partition of the previous hour:
+      | id        | amount |
+      | payment-3 | 5      |
+    And the descriptor declares the mounter "payments-total" that uses the aggregate metadata:
+      """
+      type: POLL
+      schedule: {every: 1m}
+      mode: AGGREGATION
+      aggregator: software.spool.dsl.acceptance.mounter.IncrementalAmountTotal
+      read: {partitions: ["source=payments"], closingMargin: 0s}
+      write: {dataMart: payments-total, partitioning: {type: SAME_AS_SOURCE}}
+      """
+    When the node is started from the descriptor
+    And the mounter "payments-total" mounts once
+    Then gold has a single record with the total amount 40 in the data mart "payments-total"
+
+  @DEV-133
+  Scenario: A closing margin on a mounter that does not aggregate incrementally is rejected
+    Given the descriptor declares the mounter "payments-total":
+      """
+      type: POLL
+      schedule: {every: 1m}
+      mode: AGGREGATION
+      aggregator: software.spool.dsl.acceptance.mounter.AmountTotal
+      read: {partitions: ["source=payments"], closingMargin: 1h}
+      write: {dataMart: payments-total, partitioning: {type: SAME_AS_SOURCE}}
+      """
+    When the node is started from the descriptor
+    Then the descriptor is rejected
+    And the error names the module "payments-total"
+    And the error says "closingMargin is only used by a mounter that aggregates incrementally"
+
+  @DEV-133
+  Scenario: A negative closing margin is rejected
+    Given the descriptor declares the mounter "payments-total" that uses the aggregate metadata:
+      """
+      type: POLL
+      schedule: {every: 1m}
+      mode: AGGREGATION
+      aggregator: software.spool.dsl.acceptance.mounter.IncrementalAmountTotal
+      read: {partitions: ["source=payments"], closingMargin: -1h}
+      write: {dataMart: payments-total, partitioning: {type: SAME_AS_SOURCE}}
+      """
+    When the node is started from the descriptor
+    Then the descriptor is rejected
+    And the error says "read.closingMargin"
+    And the error says "a duration such as 30d or P30D"

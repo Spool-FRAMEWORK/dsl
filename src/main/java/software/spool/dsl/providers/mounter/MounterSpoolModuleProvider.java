@@ -20,6 +20,7 @@ import software.spool.mounter.api.MountMode;
 import software.spool.mounter.api.adapter.AlwaysClosedWindowPolicy;
 import software.spool.mounter.api.adapter.AttributesPartitioning;
 import software.spool.mounter.api.adapter.CombinedPartitionsReader;
+import software.spool.mounter.api.adapter.DatedPartitionWindowPolicy;
 import software.spool.mounter.api.adapter.NoOpMountCheckpoint;
 import software.spool.mounter.api.adapter.PartitioningQuarantinedResultWriter;
 import software.spool.mounter.api.adapter.PassThroughMountAggregator;
@@ -39,6 +40,7 @@ import software.spool.mounter.api.port.MountTarget;
 import software.spool.mounter.api.port.PartitionedReader;
 import software.spool.mounter.api.port.scaling.PartitionDiscovery;
 
+import java.time.Clock;
 import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
@@ -58,6 +60,7 @@ import java.util.Set;
 @SpoolPlugin(SpoolModuleProvider.class)
 public class MounterSpoolModuleProvider implements SpoolModuleProvider {
     private static final String USES = "uses";
+    private static final String CLOSING_MARGIN = "read.closingMargin";
 
     @Override
     public String name() {
@@ -98,6 +101,9 @@ public class MounterSpoolModuleProvider implements SpoolModuleProvider {
         Optional<AggregateMetadataRepository> aggregateMetadata = aggregatesIncrementally(mounter)
                 ? InfrastructurePluginFactory.aggregateMetadataRepository(infrastructure)
                 : Optional.empty();
+        if (mounter.read().closingMargin().isPresent() && aggregateMetadata.isEmpty()) {
+            throw new InvalidDescriptorException(CLOSING_MARGIN, "closingMargin is only used by a mounter that aggregates incrementally");
+        }
         PartitionedReader reader = aggregateMetadata.isPresent() ? dataLake : readerOf(mounter, dataLake);
         return mounter.type() == MounterType.POLL
                 ? polling(mounter, infrastructure, reader, aggregateMetadata)
@@ -156,6 +162,8 @@ public class MounterSpoolModuleProvider implements SpoolModuleProvider {
         checkpoint.checkpoint(new NoOpMountCheckpoint());
         aggregateMetadata.ifPresentOrElse(repository -> {
             checkpoint.aggregatingIncrementally(repository, discoveryOf(mounter, infrastructure));
+            mounter.read().closingMargin().ifPresent(margin ->
+                    checkpoint.windowPolicy(new DatedPartitionWindowPolicy(Clock.systemUTC(), margin)));
             mount.removingWith(InfrastructurePluginFactory.dataMartRemover(infrastructure));
         }, () -> checkpoint.windowPolicy(new AlwaysClosedWindowPolicy()));
         if (mounter.mode() == MountMode.TRANSFORMATION) {

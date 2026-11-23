@@ -111,7 +111,7 @@ class JanitorSpoolModuleProviderTest {
             Pieces.dataMart("FILE_SYSTEM", Map.of("path", tmp.resolve("mart").toString())),
             Pieces.quarantineRepository("FILE_SYSTEM", Map.of("path", quarantinePath))};
         MounterDescriptor gold = new MounterDescriptor("payments-gold", MounterType.POLL, Optional.empty(), MountMode.AGGREGATION,
-            false, Optional.empty(), new MountReadDescriptor(List.of(PartitionKey.ofEntriesWithoutDate().with("source", "payments").build())),
+            false, Optional.empty(), new MountReadDescriptor(List.of(PartitionKey.ofEntriesWithoutDate().with("source", "payments").build()), Optional.empty()),
             new MountWriteDescriptor("payments", new PartitioningDescriptor(PartitioningType.ATTRIBUTES, List.of("country"))));
         SpoolNodeDescriptor node = Pieces.node(List.of(gold), pieces);
         byte[] result = "{\"day\":\"2026-11-21\",\"country\":\"FR\",\"amount\":7}".getBytes(StandardCharsets.UTF_8);
