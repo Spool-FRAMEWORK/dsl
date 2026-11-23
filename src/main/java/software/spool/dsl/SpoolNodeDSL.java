@@ -1,11 +1,8 @@
 package software.spool.dsl;
 
-import software.spool.dsl.providers.authentication.RequestAuthenticators;
-import software.spool.dsl.providers.mounter.QuarantinedResultWriters;
 import software.spool.core.adapter.otel.OpenTelemetryMetricsRegistry;
 import software.spool.core.model.spool.SpoolNode;
 import software.spool.dsl.descriptors.SpoolNodeDescriptor;
-import software.spool.dsl.registry.ModuleProviderRegistry;
 import software.spool.dsl.source.FileSystemDescriptorSource;
 
 import java.io.IOException;
@@ -55,13 +52,8 @@ public abstract class SpoolNodeDSL {
     }
 
     public static SpoolNode fromDescriptor(SpoolNodeDescriptor descriptor) {
-        RequestAuthenticators authentication = RequestAuthenticators.from(descriptor.authentication());
-        QuarantinedResultWriters resultWriters = QuarantinedResultWriters.of(descriptor);
         SpoolNode node = SpoolNode.create(descriptor.server().port(), new OpenTelemetryMetricsRegistry());
-        descriptor.declaredModules().stream()
-                .map(module -> ModuleProviderRegistry.build(module.descriptor(), descriptor.infrastructureOf(module),
-                        authentication, resultWriters))
-                .forEach(node::register);
+        DescriptorModules.of(descriptor).forEach(node::register);
         return node;
     }
 }
