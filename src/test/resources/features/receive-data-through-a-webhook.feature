@@ -125,3 +125,47 @@ Feature: A crawler receives data through a webhook
     And "boe-sender" delivers [{"id": "a-3"}] signed with the secret
     Then the delivery is accepted
     And the inbox has 1 captured envelope of the source "boe"
+
+  @DEV-33
+  Scenario: By default, a record whose key is in quarantine is not captured again
+    Given the webhook crawler identifies its records by "id"
+    And the record {"id": "a-1", "amount": -5} of the source "boe" is in quarantine, waiting to be resolved
+    When "boe-sender" delivers [{"id": "a-1", "amount": 5}] signed with the secret
+    Then the delivery is accepted as 1 duplicate
+    And the record "a-1" is still in quarantine, waiting to be resolved
+
+  @DEV-33
+  Scenario: A source that replaces what is in quarantine captures the corrected record
+    Given the webhook crawler identifies its records by "id"
+    And the webhook crawler replaces what is in quarantine
+    And the record {"id": "a-1", "amount": -5} of the source "boe" is in quarantine, waiting to be resolved
+    When "boe-sender" delivers [{"id": "a-1", "amount": 5}] signed with the secret
+    Then the delivery is accepted
+    And the captured envelope holds {"id": "a-1", "amount": 5}
+    And the record "a-1" of the quarantine is resolved as REPLACED, with the entry in its history
+
+  @DEV-33
+  Scenario: The record sent again unchanged is still a duplicate, even for a source that replaces
+    Given the webhook crawler identifies its records by "id"
+    And the webhook crawler replaces what is in quarantine
+    And the record {"id": "a-1", "amount": -5} of the source "boe" is in quarantine, waiting to be resolved
+    When "boe-sender" delivers [{"id": "a-1", "amount": -5}] signed with the secret
+    Then the delivery is accepted as 1 duplicate
+    And the record "a-1" is still in quarantine, waiting to be resolved
+
+  @DEV-33
+  Scenario: A record already captured is a duplicate, even for a source that replaces
+    Given the webhook crawler identifies its records by "id"
+    And the webhook crawler replaces what is in quarantine
+    When "boe-sender" delivers [{"id": "a-1", "amount": 5}] signed with the secret
+    And "boe-sender" delivers [{"id": "a-1", "amount": 7}] signed with the secret again
+    Then the inbox has 1 captured envelope of the source "boe"
+    And the captured envelope holds {"id": "a-1", "amount": 5}
+
+  @DEV-33
+  Scenario: An unknown value of whenQuarantined stops the load
+    Given the webhook crawler says "SOMETIMES" for what is in quarantine
+    When the descriptor is loaded
+    Then the load fails
+    And the error names "whenQuarantined"
+    And the error names "SOMETIMES"
