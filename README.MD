@@ -345,6 +345,7 @@ crawler listens to it.
 | `source.type` | The source plugin: `HTTP` for `POLL`, `IN_MEMORY` for `STREAM`. |
 | `source.normalizer` | The normalizer that turns what the source reads into records: `JSON`, `JSON_ARRAY`, `JSON_OBJECT`, `EVENT_CLASS`, `EVENT_CLASS_ARRAY` or `PDF`, or one composed from steps (see below). |
 | `source.mediaType` | The media type of the records, as an alias (`JSON`, `TEXT`, `PDF`, `PNG`, `JPEG`, `MP4`) or in full (`application/x-ndjson`). It only labels the records. |
+| `source.idempotencyKeySchema` | The fields that identify a record, so the crawler stores it once however many times it captures it. Optional; without it the whole record is the key (see [Records identified by some of their fields](#records-identified-by-some-of-their-fields)). |
 | `eventMapping.namingConvention` | How field names are written in the events. |
 | `eventMapping.domainMappingList` | The domain events the crawler publishes, by the simple name of their class. Optional. |
 | `eventMapping.eventPackage` | The package of those classes. Optional; `events` when missing. |
@@ -383,6 +384,40 @@ else it comes from:
     eventMapping:
       namingConvention: SNAKE_CASE
 ```
+
+#### Records identified by some of their fields
+
+A crawler stores a record once, by its idempotency key. By default the key is a hash of the source and the whole
+record, so a field that changes on every call, such as the time it was fetched, makes the same record look new.
+`source.idempotencyKeySchema` names the fields that identify a record instead, written with dots for a field inside an
+object:
+
+```yaml
+- crawler:
+    type: POLL
+    id: payments-crawler
+    schedule:
+      every: 1m
+    source:
+      type: HTTP
+      configuration:
+        sourceId: payments
+        url: "https://api.example.com/payments"
+      normalizer: JSON_ARRAY
+      mediaType: JSON
+      idempotencyKeySchema:
+        fields: [id, meta.version]
+        whenFieldIsMissing: FAIL
+    eventMapping:
+      namingConvention: SNAKE_CASE
+```
+
+| Key | Description |
+|---|---|
+| `fields` | The fields the key is built from, at least one. Two records of the source with the same values in them are the same record, whatever else they hold, so a new version of a record needs a field that says so, such as `meta.version`. A value is compared as text, so `1` and `"1"` are the same. |
+| `whenFieldIsMissing` | `FAIL`, by default, does not store a record that lacks one of the fields and reports it, naming the field, to the error router. `WHOLE_RECORD` stores it keyed by the whole record. A record that is not a JSON object, such as a PDF or a line of text, lacks them all. |
+
+The key is built from the record the normalizer gives, so it works the same for a JSON, YAML or SQL source.
 
 ### Webhook
 
@@ -425,7 +460,7 @@ modules:
 
 | Answer | When |
 |---|---|
-| `202` | The records were stored, or were already in the inbox. The body says how many of each. |
+| `202` | The records were stored, were already in the inbox, or were rejected because they lack a field of the [idempotency key schema](#records-identified-by-some-of-their-fields) of the source. The body says how many of each: `{"stored": 1, "duplicates": 0, "rejected": 1}`. A rejected record is not stored and sending it again does not change that. |
 | `400` | No records could be read from the body. |
 | `401` / `403` | The sender is not identified, or lacks the role. |
 | `413` | The body is bigger than `maxBodySize`. It is refused before being read whole. |
