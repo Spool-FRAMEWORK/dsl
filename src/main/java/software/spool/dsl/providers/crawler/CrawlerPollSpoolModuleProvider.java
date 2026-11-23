@@ -55,6 +55,7 @@ public class CrawlerPollSpoolModuleProvider implements SpoolModuleProvider {
                     .enrichRules(source.enrichment())
                     .rootPath(source.rootPath())
                     .identifyingRecordsWith(source.idempotencyKeySchema())
+                    .whenQuarantined(source.whenQuarantined())
                     .mediaType(source.mediaType())
                     .and()
                 .mapping()

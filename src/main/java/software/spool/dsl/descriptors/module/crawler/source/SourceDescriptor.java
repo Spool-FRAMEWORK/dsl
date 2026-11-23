@@ -5,6 +5,8 @@ import software.spool.core.model.vo.MediaType;
 import software.spool.core.port.serde.EnrichmentRule;
 import software.spool.core.resilience.model.CircuitBreakerPolicy;
 
+import software.spool.crawler.api.port.WhenQuarantined;
+
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -24,16 +26,18 @@ public record SourceDescriptor(
         String rootPath,
         List<EnrichmentRule> enrichment,
         CircuitBreakerPolicy circuit,
-        IdempotencyKeySchema idempotencyKeySchema
+        IdempotencyKeySchema idempotencyKeySchema,
+        WhenQuarantined whenQuarantined
 ) {
     public SourceDescriptor {
         rootPath = Objects.requireNonNullElse(rootPath, "");
         idempotencyKeySchema = Objects.requireNonNullElse(idempotencyKeySchema, IdempotencyKeySchema.wholeRecord());
+        whenQuarantined = Objects.requireNonNullElse(whenQuarantined, WhenQuarantined.KEEP);
     }
 
     public SourceDescriptor(String type, String id, Map<String, String> configuration, NormalizerDescriptor normalizer,
                             MediaType mediaType, String rootPath, List<EnrichmentRule> enrichment) {
         this(type, id, configuration, normalizer, mediaType, rootPath, enrichment, CircuitBreakerPolicy.defaults(),
-                IdempotencyKeySchema.wholeRecord());
+                IdempotencyKeySchema.wholeRecord(), WhenQuarantined.KEEP);
     }
 }

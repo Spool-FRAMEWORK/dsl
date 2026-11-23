@@ -83,6 +83,7 @@ public class CrawlerWebhookSpoolModuleProvider implements SpoolModuleProvider {
                 .enrichRules(source.enrichment())
                 .rootPath(source.rootPath())
                 .identifyingRecordsWith(source.idempotencyKeySchema())
+                .whenQuarantined(source.whenQuarantined())
                 .mediaType(source.mediaType())
                 .receivingAt(path)
                 .authenticatedBy(authentication.find(providerName, "webhook.authentication"), role);

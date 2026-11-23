@@ -2,6 +2,7 @@ package software.spool.dsl.providers.crawler;
 
 import software.spool.core.model.schedule.Schedule;
 import software.spool.core.model.vo.IdempotencyKeySchema;
+import software.spool.crawler.api.port.WhenQuarantined;
 import software.spool.core.model.vo.IdempotencyKeySchema.WhenFieldIsMissing;
 import software.spool.core.model.vo.MediaType;
 import software.spool.core.port.serde.EnrichmentRule;
@@ -32,6 +33,7 @@ import static software.spool.dsl.reader.ReadableDuration.insteadOfMilliseconds;
 public class CrawlerModuleDescriptorProvider implements ModuleDescriptorProvider {
     private static final ScheduleReader SCHEDULE = ScheduleReader.standard();
     private static final String IDEMPOTENCY_KEY_SCHEMA = "idempotencyKeySchema";
+    private static final String WHEN_QUARANTINED = "whenQuarantined";
 
     /** An alias such as JSON or a full media type such as application/json, which is what the records are labelled. */
     private static final ValueParser<MediaType> MEDIA_TYPE = ValueParsers.of("a media type such as JSON or application/json",
@@ -80,7 +82,8 @@ public class CrawlerModuleDescriptorProvider implements ModuleDescriptorProvider
                 source.optional("rootPath", ValueParsers.STRING).orElse(null),
                 source.list("enrichment").stream().map(CrawlerModuleDescriptorProvider::readRule).toList(),
                 readCircuit(source),
-                readIdempotencyKeySchema(source)
+                readIdempotencyKeySchema(source),
+                source.optional(WHEN_QUARANTINED, ValueParsers.oneOf(WhenQuarantined.class)).orElse(WhenQuarantined.KEEP)
         );
     }
 
