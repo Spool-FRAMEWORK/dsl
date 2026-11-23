@@ -1,6 +1,8 @@
 package software.spool.dsl.providers.crawler;
 
 import software.spool.core.model.schedule.Schedule;
+import software.spool.core.model.vo.IdempotencyKeySchema;
+import software.spool.core.model.vo.IdempotencyKeySchema.WhenFieldIsMissing;
 import software.spool.core.model.vo.MediaType;
 import software.spool.core.port.serde.EnrichmentRule;
 import software.spool.core.port.serde.NamingConvention;
@@ -29,6 +31,7 @@ import static software.spool.dsl.reader.ReadableDuration.insteadOfMilliseconds;
 @SpoolPlugin(ModuleDescriptorProvider.class)
 public class CrawlerModuleDescriptorProvider implements ModuleDescriptorProvider {
     private static final ScheduleReader SCHEDULE = ScheduleReader.standard();
+    private static final String IDEMPOTENCY_KEY_SCHEMA = "idempotencyKeySchema";
 
     /** An alias such as JSON or a full media type such as application/json, which is what the records are labelled. */
     private static final ValueParser<MediaType> MEDIA_TYPE = ValueParsers.of("a media type such as JSON or application/json",
@@ -76,8 +79,20 @@ public class CrawlerModuleDescriptorProvider implements ModuleDescriptorProvider
                 source.required("mediaType", MEDIA_TYPE),
                 source.optional("rootPath", ValueParsers.STRING).orElse(null),
                 source.list("enrichment").stream().map(CrawlerModuleDescriptorProvider::readRule).toList(),
-                readCircuit(source)
+                readCircuit(source),
+                readIdempotencyKeySchema(source)
         );
+    }
+
+    private static IdempotencyKeySchema readIdempotencyKeySchema(DescriptorReader source) {
+        if (!source.keys().contains(IDEMPOTENCY_KEY_SCHEMA)) return IdempotencyKeySchema.wholeRecord();
+        DescriptorReader schema = source.object(IDEMPOTENCY_KEY_SCHEMA).knownKeysOnly(IdempotencyKeySchema.class);
+        List<String> fields = schema.required("fields", ValueParsers.TEXTS);
+        if (fields.isEmpty()) {
+            throw new InvalidDescriptorException(schema.path() + ".fields", "must name at least one field");
+        }
+        return new IdempotencyKeySchema(fields, schema.optional("whenFieldIsMissing", ValueParsers.oneOf(WhenFieldIsMissing.class))
+                .orElse(WhenFieldIsMissing.FAIL));
     }
 
     private static CircuitBreakerPolicy readCircuit(DescriptorReader source) {

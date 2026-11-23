@@ -82,6 +82,7 @@ public class CrawlerWebhookSpoolModuleProvider implements SpoolModuleProvider {
                 .ports(InfrastructurePluginFactory.crawlerPorts(infrastructure))
                 .enrichRules(source.enrichment())
                 .rootPath(source.rootPath())
+                .identifyingRecordsWith(source.idempotencyKeySchema())
                 .mediaType(source.mediaType())
                 .receivingAt(path)
                 .authenticatedBy(authentication.find(providerName, "webhook.authentication"), role);

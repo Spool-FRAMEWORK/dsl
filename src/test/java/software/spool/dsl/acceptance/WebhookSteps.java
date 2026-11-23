@@ -56,6 +56,8 @@ public class WebhookSteps {
     private String role = "boe-publisher";
     private Optional<String> webhookAuthentication = Optional.empty();
     private Optional<String> webhookRole = Optional.empty();
+    private Optional<List<String>> idempotencyKeyFields = Optional.empty();
+    private boolean keyedByTheWholeRecordWhenAFieldIsMissing;
     private Optional<String> path = Optional.empty();
     private Optional<Integer> maxBodySize = Optional.empty();
     private String sourceId = "boe";
@@ -98,6 +100,24 @@ public class WebhookSteps {
     @Given("the provider {string} gives the role {string} instead")
     public void theProviderGivesAnotherRole(String name, String role) {
         this.role = role;
+        writeDescriptor();
+    }
+
+    @Given("the webhook crawler identifies its records by {string}")
+    public void theWebhookCrawlerIdentifiesItsRecordsBy(String fields) {
+        idempotencyKeyFields = Optional.of(List.of(fields.split(",\\s*")));
+        writeDescriptor();
+    }
+
+    @Given("the webhook crawler identifies its records by no field")
+    public void theWebhookCrawlerIdentifiesItsRecordsByNoField() {
+        idempotencyKeyFields = Optional.of(List.of());
+        writeDescriptor();
+    }
+
+    @Given("the webhook crawler keys a record without those fields by the whole record")
+    public void theWebhookCrawlerKeysARecordWithoutThoseFieldsByTheWholeRecord() {
+        keyedByTheWholeRecordWhenAFieldIsMissing = true;
         writeDescriptor();
     }
 
@@ -280,8 +300,12 @@ public class WebhookSteps {
         yaml.append("modules:\n  - crawler:\n      type: WEBHOOK\n      id: boe-webhook\n")
                 .append("      source:\n        type: WEBHOOK\n        configuration:\n          sourceId: ").append(sourceId).append('\n');
         path.ifPresent(value -> yaml.append("          path: ").append(value).append('\n'));
-        yaml.append("        normalizer: JSON_ARRAY\n        mediaType: JSON\n")
-                .append("      eventMapping: {namingConvention: SNAKE_CASE}\n")
+        yaml.append("        normalizer: JSON_ARRAY\n        mediaType: JSON\n");
+        idempotencyKeyFields.ifPresent(fields -> {
+            yaml.append("        idempotencyKeySchema:\n          fields: [").append(String.join(", ", fields)).append("]\n");
+            if (keyedByTheWholeRecordWhenAFieldIsMissing) yaml.append("          whenFieldIsMissing: WHOLE_RECORD\n");
+        });
+        yaml.append("      eventMapping: {namingConvention: SNAKE_CASE}\n")
                 .append("      webhook:\n");
         webhookAuthentication.ifPresent(value -> yaml.append("        authentication: ").append(value).append('\n'));
         webhookRole.ifPresent(value -> yaml.append("        role: ").append(value).append('\n'));

@@ -55,6 +55,7 @@ public class CrawlerStreamSpoolModuleProvider implements SpoolModuleProvider {
                     .ports(InfrastructurePluginFactory.crawlerPorts(infrastructure))
                     .enrichRules(source.enrichment())
                     .rootPath(source.rootPath())
+                    .identifyingRecordsWith(source.idempotencyKeySchema())
                     .mediaType(source.mediaType())
                     .and()
                 .mapping()
