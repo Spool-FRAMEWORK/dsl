@@ -738,6 +738,8 @@ infrastructure:
   bronze.
 - An envelope whose header cannot be kept stays in the data lake but does not count as written, and the failure is
   logged.
+- The piece is watched like any other: its calls, and the check of `POSTGRESQL`, count in the health of the modules
+  that use it. While its circuit is open, a header is handled as one that could not be kept.
 - The `POSTGRESQL` type creates its table at startup if it is missing.
 - Without the piece, the data lake works as before.
 
