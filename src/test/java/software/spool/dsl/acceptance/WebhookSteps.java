@@ -9,6 +9,19 @@ import software.spool.core.model.EnvelopeStatus;
 import software.spool.core.model.spool.SpoolNode;
 import software.spool.core.model.vo.Envelope;
 import software.spool.core.model.vo.EventMetadataKey;
+import software.spool.core.model.quarantine.QuarantineLocation;
+import software.spool.core.model.quarantine.QuarantineReason;
+import software.spool.core.model.quarantine.QuarantineStatus;
+import software.spool.core.model.quarantine.QuarantinedRecord;
+import software.spool.core.model.vo.EventMetadata;
+import software.spool.core.model.vo.IdempotencyKey;
+import software.spool.core.model.vo.IdempotencyKeySchema;
+import software.spool.core.model.vo.MediaType;
+import software.spool.crawler.api.utils.StandardNormalizer;
+import software.spool.infrastructure.adapter.inbox.filesystem.FileSystemInboxReader;
+import software.spool.infrastructure.adapter.inbox.filesystem.FileSystemInboxUpdater;
+import software.spool.infrastructure.adapter.inbox.filesystem.FileSystemInboxWriter;
+import software.spool.infrastructure.adapter.quarantine.FileSystemQuarantineRepository;
 import software.spool.dsl.SpoolNodeDSL;
 
 import javax.crypto.Mac;
@@ -45,6 +58,8 @@ public class WebhookSteps {
     private static final String SIGNATURE_HEADER = "X-Signature-256";
     private static final String TIMESTAMP_HEADER = "X-Signature-Timestamp";
     private static final String JSON = "application/json";
+    private static final Duration WAIT_FOR_THE_JANITOR = Duration.ofSeconds(10);
+    private static final Duration POLL_INTERVAL = Duration.ofMillis(100);
     private static final String RETRY_AFTER = "Retry-After";
 
     private final DescriptorUnderTest descriptor;
@@ -62,6 +77,8 @@ public class WebhookSteps {
     private Optional<Integer> maxBodySize = Optional.empty();
     private String sourceId = "boe";
     private String inboxCircuit = "";
+    private Optional<String> whenQuarantined = Optional.empty();
+    private Optional<Path> quarantine = Optional.empty();
     private Optional<SpoolNode> node = Optional.empty();
 
     public WebhookSteps(DescriptorUnderTest descriptor) {
@@ -180,6 +197,34 @@ public class WebhookSteps {
         Thread.sleep(Duration.ofSeconds(seconds).toMillis());
     }
 
+    @Given("the webhook crawler replaces what is in quarantine")
+    public void theWebhookCrawlerReplacesWhatIsInQuarantine() {
+        whenQuarantined = Optional.of("REPLACE");
+        writeDescriptor();
+    }
+
+    @Given("the webhook crawler says {string} for what is in quarantine")
+    public void theWebhookCrawlerSaysForWhatIsInQuarantine(String value) {
+        whenQuarantined = Optional.of(value);
+        writeDescriptor();
+    }
+
+    @Given("^the record (\\{.*}) of the source \"([^\"]*)\" is in quarantine, waiting to be resolved$")
+    public void theRecordIsInQuarantine(String record, String source) throws IOException {
+        quarantine = Optional.of(Files.createTempDirectory("spool-quarantine"));
+        writeDescriptor();
+        byte[] normalized = StandardNormalizer.JSON_ARRAY.pipelineWith(List.of(), null)
+                .normalize(("[" + record + "]").getBytes(StandardCharsets.UTF_8)).findFirst().orElseThrow();
+        IdempotencyKey key = idempotencyKeySchema().keyOf(source, normalized);
+        Envelope envelope = new Envelope(key, new EventMetadata().set(EventMetadataKey.SOURCE, source),
+                MediaType.of(JSON), normalized, EnvelopeStatus.CAPTURED, 0, Instant.now(), null);
+        new FileSystemInboxWriter(inbox.toString()).receive(envelope);
+        new FileSystemInboxUpdater(inbox.toString()).update(List.of(key), EnvelopeStatus.QUARANTINED);
+        new FileSystemQuarantineRepository(quarantine.get().toString()).save(QuarantinedRecord.pending(envelope,
+                QuarantineLocation.inbox(), QuarantineReason.VALIDATION_FAILED, List.of("amount must not be negative"),
+                Instant.now()));
+    }
+
     @When("^\"([^\"]*)\" delivers (\\[.*]) signed with the secret$")
     public void deliversSigned(String sender, String body) {
         deliver(body, JSON, Optional.of(SECRET), Instant.now());
@@ -260,6 +305,37 @@ public class WebhookSteps {
         assertThat(last().headers().firstValue(RETRY_AFTER)).isEmpty();
     }
 
+    @Then("the delivery is accepted as {int} duplicate(s)")
+    public void theDeliveryIsAcceptedAsDuplicates(int duplicates) {
+        assertThat(last().statusCode()).as(last().body()).isEqualTo(202);
+        assertThat(json(last().body())).containsEntry("duplicates", duplicates);
+    }
+
+    @Then("the record {string} is still in quarantine, waiting to be resolved")
+    public void theRecordIsStillInQuarantine(String id) {
+        IdempotencyKey key = keyOfTheRecordWithId(id);
+        assertThat(new FileSystemQuarantineRepository(quarantine.orElseThrow().toString()).find(key))
+                .hasValueSatisfying(found -> assertThat(found.status()).isEqualTo(QuarantineStatus.PENDING));
+        assertThat(new FileSystemInboxReader(inbox.toString()).findById(key))
+                .hasValueSatisfying(envelope -> assertThat(envelope.status()).isEqualTo(EnvelopeStatus.QUARANTINED));
+    }
+
+    @Then("the record {string} of the quarantine is resolved as REPLACED, with the entry in its history")
+    public void theRecordIsResolvedAsReplaced(String id) throws InterruptedException {
+        FileSystemQuarantineRepository repository = new FileSystemQuarantineRepository(quarantine.orElseThrow().toString());
+        IdempotencyKey key = keyOfTheRecordWithId(id);
+        Instant deadline = Instant.now().plus(WAIT_FOR_THE_JANITOR);
+        while (repository.find(key).map(QuarantinedRecord::status).filter(QuarantineStatus.REPLACED::equals).isEmpty()
+                && Instant.now().isBefore(deadline)) {
+            Thread.sleep(POLL_INTERVAL.toMillis());
+        }
+        assertThat(repository.find(key)).hasValueSatisfying(found -> {
+            assertThat(found.status()).isEqualTo(QuarantineStatus.REPLACED);
+            assertThat(found.history()).singleElement()
+                    .satisfies(entry -> assertThat(entry.resolution().status()).isEqualTo(QuarantineStatus.REPLACED));
+        });
+    }
+
     @Then("the inbox has {int} captured envelope(s) of the source {string}")
     public void theInboxHasCapturedEnvelopes(int count, String source) {
         assertThat(captured()).hasSize(count)
@@ -293,6 +369,8 @@ public class WebhookSteps {
                 .append("infrastructure:\n  bus: {kind: EVENT_BUS, type: IN_MEMORY}\n")
                 .append("  inbox: {kind: INBOX, type: FILE_SYSTEM, configuration: {path: \"")
                 .append(inbox.toString().replace('\\', '/')).append("\"").append(inboxCircuit).append("}}\n");
+        quarantine.ifPresent(folder -> yaml.append("  quarantine: {kind: QUARANTINE_REPOSITORY, type: FILE_SYSTEM, configuration: {path: \"")
+                .append(folder.toString().replace('\\', '/')).append("\"}}\n"));
         if (webhookAuthentication.isEmpty() && webhookRole.isEmpty() && path.isEmpty()) {
             descriptor.write(yaml.append("modules: []\n").toString());
             return;
@@ -305,12 +383,22 @@ public class WebhookSteps {
             yaml.append("        idempotencyKeySchema:\n          fields: [").append(String.join(", ", fields)).append("]\n");
             if (keyedByTheWholeRecordWhenAFieldIsMissing) yaml.append("          whenFieldIsMissing: WHOLE_RECORD\n");
         });
+        whenQuarantined.ifPresent(value -> yaml.append("        whenQuarantined: ").append(value).append('\n'));
         yaml.append("      eventMapping: {namingConvention: SNAKE_CASE}\n")
                 .append("      webhook:\n");
         webhookAuthentication.ifPresent(value -> yaml.append("        authentication: ").append(value).append('\n'));
         webhookRole.ifPresent(value -> yaml.append("        role: ").append(value).append('\n'));
         maxBodySize.ifPresent(value -> yaml.append("        maxBodySize: ").append(value).append('\n'));
+        quarantine.ifPresent(folder -> yaml.append("  - janitor:\n      id: boe-janitor\n      schedule: {every: 1h}\n"));
         descriptor.write(yaml.toString());
+    }
+
+    private IdempotencyKeySchema idempotencyKeySchema() {
+        return IdempotencyKeySchema.of(idempotencyKeyFields.orElseThrow());
+    }
+
+    private IdempotencyKey keyOfTheRecordWithId(String id) {
+        return idempotencyKeySchema().keyOf(sourceId, ("{\"id\": \"" + id + "\"}").getBytes(StandardCharsets.UTF_8));
     }
 
     private synchronized void startedNode() {
