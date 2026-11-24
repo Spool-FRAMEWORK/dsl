@@ -79,6 +79,8 @@ public class WebhookSteps {
     private String inboxCircuit = "";
     private Optional<String> whenQuarantined = Optional.empty();
     private Optional<Path> quarantine = Optional.empty();
+    private Optional<String> janitorTtl = Optional.empty();
+    private Optional<String> deduplicationWindow = Optional.empty();
     private Optional<SpoolNode> node = Optional.empty();
 
     public WebhookSteps(DescriptorUnderTest descriptor) {
@@ -197,6 +199,37 @@ public class WebhookSteps {
         Thread.sleep(Duration.ofSeconds(seconds).toMillis());
     }
 
+    @Given("^a janitor removes the persisted envelopes after (\\d+(?:ms|s|m|h|d))$")
+    public void aJanitorRemovesThePersistedEnvelopesAfter(String ttl) throws IOException {
+        janitorTtl = Optional.of(ttl);
+        quarantine = Optional.of(quarantine.orElse(Files.createTempDirectory("spool-quarantine")));
+        writeDescriptor();
+    }
+
+    @Given("^a janitor removes the persisted envelopes after (\\d+(?:ms|s|m|h|d)) and remembers their keys for (\\d+(?:ms|s|m|h|d))$")
+    public void aJanitorRemovesThePersistedEnvelopesAndRemembersTheirKeys(String ttl, String window) throws IOException {
+        deduplicationWindow = Optional.of(window);
+        aJanitorRemovesThePersistedEnvelopesAfter(ttl);
+    }
+
+    @Given("^the record (\\{.*}) of the source \"([^\"]*)\" was persisted$")
+    public void theRecordWasPersisted(String record, String source) {
+        IdempotencyKey key = storedAs(record, source, EnvelopeStatus.PERSISTED);
+        assertThat(new FileSystemInboxReader(inbox.toString()).findById(key)).isPresent();
+    }
+
+    @Given("the janitor has removed the envelope of {string}")
+    public void theJanitorHasRemovedTheEnvelopeOf(String id) throws InterruptedException {
+        startedNode();
+        IdempotencyKey key = keyOfTheRecordWithId(id);
+        FileSystemInboxReader reader = new FileSystemInboxReader(inbox.toString());
+        Instant deadline = Instant.now().plus(WAIT_FOR_THE_JANITOR);
+        while (reader.findById(key).isPresent() && Instant.now().isBefore(deadline)) {
+            Thread.sleep(POLL_INTERVAL.toMillis());
+        }
+        assertThat(reader.findById(key)).as("the envelope of %s is still in the inbox", id).isEmpty();
+    }
+
     @Given("the webhook crawler replaces what is in quarantine")
     public void theWebhookCrawlerReplacesWhatIsInQuarantine() {
         whenQuarantined = Optional.of("REPLACE");
@@ -213,13 +246,8 @@ public class WebhookSteps {
     public void theRecordIsInQuarantine(String record, String source) throws IOException {
         quarantine = Optional.of(Files.createTempDirectory("spool-quarantine"));
         writeDescriptor();
-        byte[] normalized = StandardNormalizer.JSON_ARRAY.pipelineWith(List.of(), null)
-                .normalize(("[" + record + "]").getBytes(StandardCharsets.UTF_8)).findFirst().orElseThrow();
-        IdempotencyKey key = idempotencyKeySchema().keyOf(source, normalized);
-        Envelope envelope = new Envelope(key, new EventMetadata().set(EventMetadataKey.SOURCE, source),
-                MediaType.of(JSON), normalized, EnvelopeStatus.CAPTURED, 0, Instant.now(), null);
-        new FileSystemInboxWriter(inbox.toString()).receive(envelope);
-        new FileSystemInboxUpdater(inbox.toString()).update(List.of(key), EnvelopeStatus.QUARANTINED);
+        IdempotencyKey key = storedAs(record, source, EnvelopeStatus.QUARANTINED);
+        Envelope envelope = new FileSystemInboxReader(inbox.toString()).findById(key).orElseThrow();
         new FileSystemQuarantineRepository(quarantine.get().toString()).save(QuarantinedRecord.pending(envelope,
                 QuarantineLocation.inbox(), QuarantineReason.VALIDATION_FAILED, List.of("amount must not be negative"),
                 Instant.now()));
@@ -350,7 +378,8 @@ public class WebhookSteps {
 
     @Then("the inbox is empty")
     public void theInboxIsEmpty() {
-        assertThat(filesIn(inbox)).isEmpty();
+        assertThat(Stream.of(EnvelopeStatus.values()).flatMap(status -> filesIn(inbox.resolve(status.name())).stream()))
+                .isEmpty();
     }
 
     @After
@@ -368,7 +397,8 @@ public class WebhookSteps {
                 .append("      roles: ").append(role).append('\n')
                 .append("infrastructure:\n  bus: {kind: EVENT_BUS, type: IN_MEMORY}\n")
                 .append("  inbox: {kind: INBOX, type: FILE_SYSTEM, configuration: {path: \"")
-                .append(inbox.toString().replace('\\', '/')).append("\"").append(inboxCircuit).append("}}\n");
+                .append(inbox.toString().replace('\\', '/')).append("\"").append(inboxCircuit)
+                .append(deduplicationWindow.map(window -> ", deduplicationWindow: " + window).orElse("")).append("}}\n");
         quarantine.ifPresent(folder -> yaml.append("  quarantine: {kind: QUARANTINE_REPOSITORY, type: FILE_SYSTEM, configuration: {path: \"")
                 .append(folder.toString().replace('\\', '/')).append("\"}}\n"));
         if (webhookAuthentication.isEmpty() && webhookRole.isEmpty() && path.isEmpty()) {
@@ -389,8 +419,21 @@ public class WebhookSteps {
         webhookAuthentication.ifPresent(value -> yaml.append("        authentication: ").append(value).append('\n'));
         webhookRole.ifPresent(value -> yaml.append("        role: ").append(value).append('\n'));
         maxBodySize.ifPresent(value -> yaml.append("        maxBodySize: ").append(value).append('\n'));
-        quarantine.ifPresent(folder -> yaml.append("  - janitor:\n      id: boe-janitor\n      schedule: {every: 1h}\n"));
+        quarantine.ifPresent(folder -> yaml.append("  - janitor:\n      id: boe-janitor\n      schedule: {every: ")
+                .append(janitorTtl.isPresent() ? "1s" : "1h").append("}\n")
+                .append(janitorTtl.map(ttl -> "      configuration: {ttl: " + ttl + "}\n").orElse("")));
         descriptor.write(yaml.toString());
+    }
+
+    private IdempotencyKey storedAs(String record, String source, EnvelopeStatus status) {
+        byte[] normalized = StandardNormalizer.JSON_ARRAY.pipelineWith(List.of(), null)
+                .normalize(("[" + record + "]").getBytes(StandardCharsets.UTF_8)).findFirst().orElseThrow();
+        IdempotencyKey key = idempotencyKeySchema().keyOf(source, normalized);
+        Envelope envelope = new Envelope(key, new EventMetadata().set(EventMetadataKey.SOURCE, source),
+                MediaType.of(JSON), normalized, EnvelopeStatus.CAPTURED, 0, Instant.now(), null);
+        new FileSystemInboxWriter(inbox.toString()).receive(envelope);
+        new FileSystemInboxUpdater(inbox.toString()).update(List.of(key), status);
+        return key;
     }
 
     private IdempotencyKeySchema idempotencyKeySchema() {
