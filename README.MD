@@ -776,6 +776,11 @@ A mounter to silver always has a quarantine, so it needs a `QUARANTINE_REPOSITOR
 validation, or that lacks a partition attribute, goes to it and is removed from bronze. Writing silver needs a data
 lake type that mounters can write to: `FILE_SYSTEM` today.
 
+A mounter that does not aggregate incrementally writes everything again in each round, and when the round ends well
+each partition it wrote keeps only the results of that round: a total that changes does not leave the old one behind,
+and a record that left bronze leaves silver too. A partition that gets no results in a round keeps what it had. Two
+mounters must not write to the same partition of a data mart, or each would remove what the other wrote.
+
 #### Aggregating incrementally
 
 An `AGGREGATION` mounter whose `aggregator` implements `IncrementalMountAggregator` can add what is new to what it
