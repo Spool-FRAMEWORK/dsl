@@ -346,6 +346,7 @@ crawler listens to it.
 | `source.normalizer` | The normalizer that turns what the source reads into records: `JSON`, `JSON_ARRAY`, `JSON_OBJECT`, `EVENT_CLASS`, `EVENT_CLASS_ARRAY` or `PDF`, or one composed from steps (see below). |
 | `source.mediaType` | The media type of the records, as an alias (`JSON`, `TEXT`, `PDF`, `PNG`, `JPEG`, `MP4`) or in full (`application/x-ndjson`). It only labels the records. |
 | `source.idempotencyKeySchema` | The fields that identify a record, so the crawler stores it once however many times it captures it. Optional; without it the whole record is the key (see [Records identified by some of their fields](#records-identified-by-some-of-their-fields)). |
+| `source.whenQuarantined` | `KEEP` or `REPLACE`: whether a capture whose key is in quarantine is a duplicate or takes its place. Optional; `KEEP` when missing (see [A corrected record whose key is in quarantine](#a-corrected-record-whose-key-is-in-quarantine)). |
 | `eventMapping.namingConvention` | How field names are written in the events. |
 | `eventMapping.domainMappingList` | The domain events the crawler publishes, by the simple name of their class. Optional. |
 | `eventMapping.eventPackage` | The package of those classes. Optional; `events` when missing. |
@@ -418,6 +419,40 @@ object:
 | `whenFieldIsMissing` | `FAIL`, by default, does not store a record that lacks one of the fields and reports it, naming the field, to the error router. `WHOLE_RECORD` stores it keyed by the whole record. A record that is not a JSON object, such as a PDF or a line of text, lacks them all. |
 
 The key is built from the record the normalizer gives, so it works the same for a JSON, YAML or SQL source.
+
+#### A corrected record whose key is in quarantine
+
+With a key built from some fields, the corrected version of a record that went to the quarantine has the same key as
+the one in quarantine. `source.whenQuarantined` says what to do with it
+([ADR-032](https://linear.app/javier-castilla/document/adr-032-una-fuente-puede-declarar-que-su-captura-nueva-sustituya-a-la-b5837fb9d9b6)):
+
+| Value | What happens |
+|---|---|
+| `KEEP` | By default. The capture is a duplicate, and the quarantine is resolved by hand through the janitor. |
+| `REPLACE` | A capture with another payload takes the place of the one in quarantine: it is stored as captured, and the janitor resolves the quarantine as `REPLACED`, which stays in its history. The same payload is still a duplicate, since it would fail again. |
+
+Only an envelope that is in quarantine in the inbox can be replaced. A key in any other state, or one that a mounter
+rejected, is always a duplicate.
+
+```yaml
+- crawler:
+    type: POLL
+    id: corrected-payments-crawler
+    schedule:
+      every: 1m
+    source:
+      type: HTTP
+      configuration:
+        sourceId: corrected-payments
+        url: "https://api.example.com/payments"
+      normalizer: JSON_ARRAY
+      mediaType: JSON
+      idempotencyKeySchema:
+        fields: [id]
+      whenQuarantined: REPLACE
+    eventMapping:
+      namingConvention: SNAKE_CASE
+```
 
 ### Webhook
 
