@@ -71,6 +71,15 @@ public class JanitorSpoolModuleProvider implements SpoolModuleProvider {
                 .schedule(janitor.schedule().orElse(DEFAULT_ROUND_SCHEDULE));
         janitor.threshold().ifPresent(threshold -> builder.withMillisecondsThreshold(intMillis("threshold", threshold)));
         janitor.ttl().ifPresent(ttl -> builder.withMillisecondsTtl(intMillis("ttl", ttl)));
+        InfrastructurePluginFactory.deduplicationWindowOf(infrastructure.inbox()).ifPresent(window -> {
+            Duration ttl = janitor.ttl().orElse(PollingJanitorBuilder.DEFAULT_TTL);
+            if (window.compareTo(ttl) <= 0) {
+                throw new InvalidDescriptorException(infrastructure.inbox().path() + ".configuration."
+                        + InfrastructurePluginFactory.DEDUPLICATION_WINDOW, "must be longer than the ttl of the janitor ("
+                        + ttl + "): the envelope is still in the inbox for all of it, got " + window);
+            }
+            builder.deduplicateFor(window, InfrastructurePluginFactory.processedKeys(infrastructure.inbox()));
+        });
         janitor.quarantineTtl().ifPresent(ttl -> builder.withMillisecondsQuarantineTtl(intMillis("quarantineTtl", ttl)));
         janitor.quarantineRetention().ifPresent(retention -> builder.withMillisecondsQuarantineRetention(retention.toMillis()));
         janitor.maxInboxUpdateAttempts().ifPresent(builder::withMaxInboxUpdateAttempts);

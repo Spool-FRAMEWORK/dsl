@@ -1,5 +1,10 @@
 package software.spool.dsl.providers;
 
+import software.spool.dsl.reader.ReadableDuration;
+import software.spool.dsl.InvalidDescriptorException;
+import software.spool.infrastructure.spi.provider.inbox.ProcessedKeyRepositoryProvider;
+import software.spool.core.port.idempotency.ProcessedKeyRepository;
+import software.spool.crawler.api.adapter.inbox.DeduplicatingInboxWriter;
 import software.spool.core.adapter.health.MonitoredDataLakeEnvelopeRemover;
 import software.spool.core.adapter.health.MonitoredDataLakeWriter;
 import software.spool.core.adapter.health.MonitoredEnvelopeHeaderRemover;
@@ -64,6 +69,7 @@ import software.spool.infrastructure.spi.provider.inbox.InboxWriterProvider;
 import software.spool.infrastructure.spi.provider.quarantine.QuarantineRepositoryProvider;
 import software.spool.core.port.datalake.DataLakeWriter;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.BiFunction;
@@ -84,6 +90,8 @@ import java.util.function.BiFunction;
  * theirs. Two providers with the same name and priority fail when they are registered, naming both classes.</p>
  */
 public final class InfrastructurePluginFactory {
+    public static final String DEDUPLICATION_WINDOW = "deduplicationWindow";
+
 
     private InfrastructurePluginFactory() {}
 
@@ -100,8 +108,26 @@ public final class InfrastructurePluginFactory {
 
     public static InboxWriter inboxWriter(InfrastructureDescriptor infra) {
         InfrastructureComponentDescriptor inbox = infra.inbox();
-        return new MonitoredInboxWriter(KnownPlugins.get(InboxWriterProvider.class, inbox.pluginName(), inbox.path() + ".type", "inbox writer")
-                .create(inbox.toPluginConfiguration()), monitorOf(infra, inbox));
+        InboxWriter writer = KnownPlugins.get(InboxWriterProvider.class, inbox.pluginName(), inbox.path() + ".type", "inbox writer")
+                .create(inbox.toPluginConfiguration());
+        InboxWriter deduplicating = deduplicationWindowOf(inbox).isPresent()
+                ? new DeduplicatingInboxWriter(writer, processedKeys(inbox))
+                : writer;
+        return new MonitoredInboxWriter(deduplicating, monitorOf(infra, inbox));
+    }
+
+    /** How long the inbox remembers the keys of the envelopes the janitor removes, when it declares it (ADR-033). */
+    public static Optional<Duration> deduplicationWindowOf(InfrastructureComponentDescriptor inbox) {
+        return Optional.ofNullable(inbox.configuration().get(DEDUPLICATION_WINDOW))
+                .map(value -> ReadableDuration.parse(value).filter(duration -> !duration.isZero())
+                        .orElseThrow(() -> new InvalidDescriptorException(inbox.path() + ".configuration." + DEDUPLICATION_WINDOW,
+                                "is not a duration longer than zero, such as 30d: " + value)));
+    }
+
+    /** Where the inbox keeps the keys of the envelopes the janitor removes, next to its envelopes. */
+    public static ProcessedKeyRepository processedKeys(InfrastructureComponentDescriptor inbox) {
+        return KnownPlugins.get(ProcessedKeyRepositoryProvider.class, inbox.pluginName(), inbox.path() + ".type", "processed keys of an inbox")
+                .create(inbox.toPluginConfiguration());
     }
 
     public static InboxReader inboxReader(InfrastructureDescriptor infra) {
