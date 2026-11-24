@@ -54,6 +54,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 public class MounterSteps {
     private static final Duration MOUNT_TIMEOUT = Duration.ofSeconds(10);
     private static final Duration POLL_INTERVAL = Duration.ofMillis(100);
+    private static final Duration ROUNDS_SETTLE = Duration.ofSeconds(3);
     private static final String BRONZE_DATE_ENTRIES = "year=2026/month=11/day=17/hour=10";
 
     private final DescriptorUnderTest descriptor;
@@ -219,6 +220,11 @@ public class MounterSteps {
     @Then("silver has the record {string} in the partition {string} of the data mart {string}")
     public void silverHasTheRecordInThePartition(String record, String partition, String dataMartName) {
         eventually(() -> assertThat(contentUnder(silver().resolve(dataMartName).resolve(partition))).contains(record));
+    }
+
+    @Then("silver keeps the records {string} and {string} in the partition {string} of the data mart {string}")
+    public void silverKeepsTheRecordsInThePartition(String first, String second, String partition, String dataMartName) {
+        consistently(() -> assertThat(contentUnder(silver().resolve(dataMartName).resolve(partition))).contains(first, second));
     }
 
     @Then("silver does not have the record {string}")
@@ -391,6 +397,16 @@ public class MounterSteps {
             return Files.readString(file);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
+        }
+    }
+
+    /** Holds for as long as the mounters of the node may still be ending their rounds after it first holds. */
+    private static void consistently(Runnable assertion) {
+        eventually(assertion);
+        Instant until = Instant.now().plus(ROUNDS_SETTLE);
+        while (Instant.now().isBefore(until)) {
+            assertion.run();
+            sleep();
         }
     }
 

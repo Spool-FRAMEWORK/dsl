@@ -560,3 +560,71 @@ Feature: A mounter is declared in the descriptor
     When the mounter "payments-silver" mounts once
     Then silver has the record "payment-1" in the data mart "payments"
     And silver does not have the record "payment-2"
+
+  @DEV-149
+  Scenario: Two mounters that write to the same partition of silver do not remove each other's records
+    Given bronze has these "web" records in the partition "source=web/eventType=Payment":
+      | id    | amount | country |
+      | web-1 | 10     | ES      |
+    And bronze has these "app" records in the partition "source=app/eventType=Payment":
+      | id    | amount | country |
+      | app-1 | 20     | ES      |
+    And the descriptor declares the mounter "payments-web":
+      """
+      type: POLL
+      schedule:
+        every: 1m
+      mode: TRANSFORMATION
+      read:
+        partitions: ["source=web/eventType=Payment"]
+      write:
+        dataMart: payments
+        partitioning:
+          type: ATTRIBUTES
+          attributes: [payload.country]
+      """
+    And the descriptor declares the mounter "payments-app":
+      """
+      type: POLL
+      schedule:
+        every: 1m
+      mode: TRANSFORMATION
+      read:
+        partitions: ["source=app/eventType=Payment"]
+      write:
+        dataMart: payments
+        partitioning:
+          type: ATTRIBUTES
+          attributes: [payload.country]
+      """
+    And the node is started from the descriptor
+    And the mounter "payments-web" mounts once
+    When the mounter "payments-web" mounts once
+    Then silver keeps the records "web-1" and "app-1" in the partition "payload.country=ES" of the data mart "payments"
+
+  @DEV-149
+  Scenario: A partition of silver that no longer gets records is left without them after the next round
+    Given bronze has these "payments" records in the partition "source=payments/eventType=Payment":
+      | id        | amount | country |
+      | payment-1 | 10     | ES      |
+      | payment-2 | 25     | FR      |
+    And the descriptor declares the mounter "payments-silver":
+      """
+      type: POLL
+      schedule:
+        every: 1m
+      mode: TRANSFORMATION
+      read:
+        partitions: ["source=payments/eventType=Payment"]
+      write:
+        dataMart: payments
+        partitioning:
+          type: ATTRIBUTES
+          attributes: [payload.country]
+      """
+    And the node is started from the descriptor
+    And the mounter "payments-silver" mounts once
+    And the record "payment-2" leaves bronze
+    When the mounter "payments-silver" mounts once
+    Then silver has the record "payment-1" in the partition "payload.country=ES" of the data mart "payments"
+    And silver does not have the record "payment-2"
