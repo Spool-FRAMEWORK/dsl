@@ -181,6 +181,13 @@ public class MounterSteps {
                 .as("files written by " + id).isTrue());
     }
 
+    @Given("the record {string} leaves bronze")
+    public void theRecordLeavesBronze(String record) throws IOException {
+        for (Path file : filesUnder(dataLake.resolve("bronze"))) {
+            if (file.getFileName().toString().startsWith(record + ".")) Files.delete(file);
+        }
+    }
+
     @When("the ingester reports that it wrote the partition {string}")
     public void theIngesterReportsThatItWroteThePartition(String partition) {
         SpoolNodeDescriptor loaded = descriptor.loaded();
@@ -216,7 +223,7 @@ public class MounterSteps {
 
     @Then("silver does not have the record {string}")
     public void silverDoesNotHaveTheRecord(String record) {
-        assertThat(contentUnder(silver())).doesNotContain(record);
+        eventually(() -> assertThat(contentUnder(silver())).doesNotContain(record));
     }
 
     @Then("silver keeps each record in the partition it had in bronze")

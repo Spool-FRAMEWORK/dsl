@@ -534,3 +534,29 @@ Feature: A mounter is declared in the descriptor
       | payment-3 | 5      |
     When the mounter "payments-total" mounts once
     Then gold has a single record with the total amount 40 in the data mart "payments-total"
+
+  @DEV-140
+  Scenario: A record that leaves bronze is no longer in silver after the next round
+    Given bronze has these "payments" records in the partition "source=payments/eventType=Payment":
+      | id        | amount |
+      | payment-1 | 10     |
+      | payment-2 | 25     |
+    And the descriptor declares the mounter "payments-silver":
+      """
+      type: POLL
+      schedule:
+        every: 1m
+      mode: TRANSFORMATION
+      read:
+        partitions: ["source=payments/eventType=Payment"]
+      write:
+        dataMart: payments
+        partitioning:
+          type: SAME_AS_SOURCE
+      """
+    And the node is started from the descriptor
+    And the mounter "payments-silver" mounts once
+    And the record "payment-2" leaves bronze
+    When the mounter "payments-silver" mounts once
+    Then silver has the record "payment-1" in the data mart "payments"
+    And silver does not have the record "payment-2"
