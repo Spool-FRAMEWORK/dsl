@@ -506,3 +506,31 @@ Feature: A mounter is declared in the descriptor
     When the node is started from the descriptor
     And the result of "silver/payments" with the id "payment-2" and the amount 25 is taken out of the quarantine in the partition "source=payments"
     Then gold has a single record with the total amount 35 in the data mart "payments-total"
+
+  @DEV-140
+  Scenario: A mounter of gold that aggregates everything keeps a single result when its total changes
+    Given silver has these "payments" records in the data mart "payments" and the partition "source=payments":
+      | id        | amount |
+      | payment-1 | 10     |
+      | payment-2 | 25     |
+    And the descriptor declares the mounter "payments-total":
+      """
+      type: POLL
+      schedule:
+        every: 1m
+      mode: AGGREGATION
+      aggregator: software.spool.dsl.acceptance.mounter.AmountTotal
+      read:
+        partitions: ["source=payments"]
+      write:
+        dataMart: payments-total
+        partitioning:
+          type: SAME_AS_SOURCE
+      """
+    And the node is started from the descriptor
+    And the mounter "payments-total" mounts once
+    And silver has these "payments" records in the data mart "payments" and the partition "source=payments":
+      | id        | amount |
+      | payment-3 | 5      |
+    When the mounter "payments-total" mounts once
+    Then gold has a single record with the total amount 40 in the data mart "payments-total"
