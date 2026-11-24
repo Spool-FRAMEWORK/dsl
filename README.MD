@@ -777,9 +777,10 @@ validation, or that lacks a partition attribute, goes to it and is removed from 
 lake type that mounters can write to: `FILE_SYSTEM` today.
 
 A mounter that does not aggregate incrementally writes everything again in each round, and when the round ends well
-each partition it wrote keeps only the results of that round: a total that changes does not leave the old one behind,
-and a record that left bronze leaves silver too. A partition that gets no results in a round keeps what it had. Two
-mounters must not write to the same partition of a data mart, or each would remove what the other wrote.
+it removes what it wrote before and no longer writes: a total that changes does not leave the old one behind, a record
+that left bronze leaves silver too, and a partition that no longer gets results is left without them. Each mounter
+keeps the list of what it wrote under `.spool/written/` in the data lake or the data mart, so mounters that write to
+the same partition never remove each other's records.
 
 #### Aggregating incrementally
 
