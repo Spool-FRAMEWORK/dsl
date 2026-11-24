@@ -169,3 +169,42 @@ Feature: A crawler receives data through a webhook
     Then the load fails
     And the error names "whenQuarantined"
     And the error names "SOMETIMES"
+
+  @DEV-14
+  Scenario: Without a deduplication window, a record repeated after the janitor removed its envelope is captured again
+    Given the webhook crawler identifies its records by "id"
+    And a janitor removes the persisted envelopes after 1s
+    And the record {"id": "a-1", "amount": 5} of the source "boe" was persisted
+    And the janitor has removed the envelope of "a-1"
+    When "boe-sender" delivers [{"id": "a-1", "amount": 5}] signed with the secret
+    Then the delivery is accepted
+    And the inbox has 1 captured envelope of the source "boe"
+
+  @DEV-14
+  Scenario: Within the deduplication window, a record repeated after the janitor removed its envelope is a duplicate
+    Given the webhook crawler identifies its records by "id"
+    And a janitor removes the persisted envelopes after 1s and remembers their keys for 1h
+    And the record {"id": "a-1", "amount": 5} of the source "boe" was persisted
+    And the janitor has removed the envelope of "a-1"
+    When "boe-sender" delivers [{"id": "a-1", "amount": 5}] signed with the secret
+    Then the delivery is accepted as 1 duplicate
+    And the inbox is empty
+
+  @DEV-14
+  Scenario: Once the deduplication window has passed, the record is captured again
+    Given the webhook crawler identifies its records by "id"
+    And a janitor removes the persisted envelopes after 1s and remembers their keys for 3s
+    And the record {"id": "a-1", "amount": 5} of the source "boe" was persisted
+    And the janitor has removed the envelope of "a-1"
+    When 4 seconds have passed
+    And "boe-sender" delivers [{"id": "a-1", "amount": 5}] signed with the secret
+    Then the delivery is accepted
+    And the inbox has 1 captured envelope of the source "boe"
+
+  @DEV-14
+  Scenario: A deduplication window that is not longer than the ttl stops the load
+    Given a janitor removes the persisted envelopes after 1h and remembers their keys for 30m
+    When the descriptor is loaded
+    Then the load fails
+    And the error names "deduplicationWindow"
+    And the error names "ttl"
