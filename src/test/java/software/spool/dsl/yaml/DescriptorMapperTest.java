@@ -25,7 +25,7 @@ class DescriptorMapperTest {
     void map_ingesterModule_returnsIngesterDescriptor() {
         RawSpoolNodeDescriptor raw = new RawSpoolNodeDescriptor(
             anyInfra(),
-            List.of(Map.of("ingester", Map.of("type", "polling", "id", "test-ingester")))
+            List.of(Map.of("ingester", Map.of("type", "REACTIVE", "id", "test-ingester")))
         );
 
         SpoolNodeDescriptor result = DescriptorMapper.map(raw);
@@ -68,7 +68,7 @@ class DescriptorMapperTest {
     @Test
     void map_secondModuleWithAProblem_usesItsIndexInThePath() {
         RawSpoolNodeDescriptor raw = new RawSpoolNodeDescriptor(anyInfra(), List.of(
-            Map.of("ingester", Map.of("id", "i")),
+            Map.of("ingester", Map.of("type", "REACTIVE", "id", "i")),
             Map.of("janitor", Map.of())));
 
         assertThatThrownBy(() -> DescriptorMapper.map(raw))

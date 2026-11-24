@@ -5,6 +5,7 @@ import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
 import software.spool.dsl.descriptors.infrastructure.InfrastructureKind;
 import software.spool.dsl.descriptors.module.SpoolModuleDescriptor;
 import software.spool.dsl.descriptors.module.ingester.IngesterDescriptor;
+import software.spool.dsl.descriptors.module.ingester.IngesterType;
 import software.spool.dsl.providers.InfrastructurePluginFactory;
 import software.spool.dsl.providers.SpoolModuleProvider;
 import software.spool.ingester.api.builder.IngesterBuilderFactory;
@@ -62,7 +63,7 @@ public class IngesterSpoolModuleProvider implements SpoolModuleProvider {
     }
 
     private boolean isBuffered(IngesterDescriptor ingester) {
-        return "FLUSH".equalsIgnoreCase(ingester.type());
+        return ingester.type() == IngesterType.FLUSH;
     }
 
     private FlushPolicy buildFlushPolicy(IngesterDescriptor ingester) {

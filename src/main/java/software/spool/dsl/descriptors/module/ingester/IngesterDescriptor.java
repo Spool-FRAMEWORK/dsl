@@ -3,6 +3,7 @@ package software.spool.dsl.descriptors.module.ingester;
 import software.spool.dsl.descriptors.module.SpoolModuleDescriptor;
 
 import java.time.Duration;
+import java.util.Objects;
 import java.util.Optional;
 
 /**
@@ -10,15 +11,18 @@ import java.util.Optional;
  * {@code processedKeysWindow} is how long it remembers the keys it wrote; without it, the ingester's default.
  */
 public record IngesterDescriptor(
-        String type,
+        IngesterType type,
         String id,
         Optional<Integer> size,
         Optional<Duration> every,
         Optional<Duration> processedKeysWindow
 ) implements SpoolModuleDescriptor {
+    public IngesterDescriptor {
+        Objects.requireNonNull(type, "type is required");
+    }
 
     /** An ingester of the given type that writes with the default batch. */
-    public static IngesterDescriptor withDefaults(String type, String id) {
+    public static IngesterDescriptor withDefaults(IngesterType type, String id) {
         return new IngesterDescriptor(type, id, Optional.empty(), Optional.empty(), Optional.empty());
     }
 

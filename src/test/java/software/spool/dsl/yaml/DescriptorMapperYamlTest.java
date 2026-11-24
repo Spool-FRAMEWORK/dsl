@@ -10,6 +10,7 @@ import software.spool.dsl.descriptors.infrastructure.InfrastructureKind;
 import software.spool.dsl.InvalidDescriptorException;
 import software.spool.dsl.descriptors.SpoolNodeDescriptor;
 import software.spool.dsl.descriptors.module.crawler.CrawlerDescriptor;
+import software.spool.dsl.descriptors.module.ingester.IngesterType;
 import software.spool.dsl.descriptors.module.ingester.IngesterDescriptor;
 import software.spool.core.model.schedule.Schedule;
 import software.spool.dsl.descriptors.module.janitor.JanitorDescriptor;
@@ -51,7 +52,7 @@ class DescriptorMapperYamlTest {
         assertThat(crawler.eventMapping().attributeList()).isEmpty();
 
         IngesterDescriptor ingester = (IngesterDescriptor) node.modules().get(1);
-        assertThat(ingester.type()).isEqualTo("REACTIVE");
+        assertThat(ingester.type()).isEqualTo(IngesterType.REACTIVE);
         assertThat(ingester.id()).isEqualTo("synthea-ingester");
 
         JanitorDescriptor janitor = (JanitorDescriptor) node.modules().get(2);

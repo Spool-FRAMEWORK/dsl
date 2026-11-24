@@ -708,6 +708,8 @@ Consumes events from the bus and writes envelopes to the data lake.
 | `FLUSH` | Writes in batches: when `size` envelopes arrive or, if set, `every` that long. |
 | `REACTIVE` | Writes each envelope immediately on arrival. |
 
+`type` is required, and any other value stops the descriptor naming it and the types there are.
+
 An envelope can be announced more than once: the bus delivers at least once, and the janitor republishes an
 envelope that waits longer than its `threshold`. The ingester remembers the envelopes it wrote for
 `configuration.processedKeysWindow` (10m by default): an envelope announced again within it is not written again,

@@ -2,6 +2,7 @@ package software.spool.dsl.providers.ingester;
 
 import software.spool.dsl.descriptors.module.SpoolModuleDescriptor;
 import software.spool.dsl.descriptors.module.ingester.IngesterDescriptor;
+import software.spool.dsl.descriptors.module.ingester.IngesterType;
 import software.spool.dsl.providers.ModuleDescriptorProvider;
 import software.spool.dsl.reader.DescriptorReader;
 import software.spool.dsl.reader.ValueParsers;
@@ -22,7 +23,7 @@ public class IngesterModuleDescriptorProvider implements ModuleDescriptorProvide
         DescriptorReader configuration = ingester.objectOrEmpty("configuration")
                 .replaced("milliseconds", insteadOfMilliseconds("every"));
         return new IngesterDescriptor(
-                ingester.optional("type", ValueParsers.STRING).orElse(null),
+                ingester.required("type", ValueParsers.oneOf(IngesterType.class)),
                 ingester.string("id"),
                 configuration.optional("size", ValueParsers.INTEGER),
                 configuration.optional("every", ValueParsers.DURATION),

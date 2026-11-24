@@ -7,6 +7,7 @@ import software.spool.dsl.descriptors.infrastructure.InfrastructureComponentDesc
 import software.spool.dsl.descriptors.infrastructure.InfrastructureDescriptor;
 import software.spool.dsl.descriptors.module.janitor.JanitorDescriptor;
 import software.spool.dsl.descriptors.module.ingester.IngesterDescriptor;
+import software.spool.dsl.descriptors.module.ingester.IngesterType;
 
 import java.io.IOException;
 import java.util.List;
@@ -59,7 +60,7 @@ class SpoolNodeDSLTest {
 
     @Test
     void fromDescriptor_ingesterWithoutDataLake_saysWhichModuleNeedsIt() {
-        SpoolNodeDescriptor descriptor = Pieces.node(List.of(IngesterDescriptor.withDefaults("REACTIVE", "synthea-ingester")),
+        SpoolNodeDescriptor descriptor = Pieces.node(List.of(IngesterDescriptor.withDefaults(IngesterType.REACTIVE, "synthea-ingester")),
             Pieces.eventBus("IN_MEMORY"), Pieces.inbox("IN_MEMORY", Map.of()));
 
         assertThatThrownBy(() -> SpoolNodeDSL.fromDescriptor(descriptor))
@@ -69,7 +70,7 @@ class SpoolNodeDSLTest {
 
     @Test
     void fromDescriptor_ingesterWithoutQuarantine_buildsTheNode() {
-        SpoolNodeDescriptor descriptor = Pieces.node(List.of(IngesterDescriptor.withDefaults("REACTIVE", "synthea-ingester")),
+        SpoolNodeDescriptor descriptor = Pieces.node(List.of(IngesterDescriptor.withDefaults(IngesterType.REACTIVE, "synthea-ingester")),
             Pieces.eventBus("IN_MEMORY"), Pieces.inbox("FILE_SYSTEM", Map.of("path", "target/spool-test/inbox")),
             Pieces.dataLake("FILE_SYSTEM", Map.of("path", "target/spool-test/datalake")));
 
@@ -90,7 +91,7 @@ class SpoolNodeDSLTest {
 
     @Test
     void fromDescriptor_s3DataLakeWithHalfTheCredentials_saysWhichKeyIsMissing() {
-        SpoolNodeDescriptor descriptor = Pieces.node(List.of(IngesterDescriptor.withDefaults("REACTIVE", "synthea-ingester")),
+        SpoolNodeDescriptor descriptor = Pieces.node(List.of(IngesterDescriptor.withDefaults(IngesterType.REACTIVE, "synthea-ingester")),
             Pieces.eventBus("IN_MEMORY"), Pieces.inbox("IN_MEMORY", Map.of()), Pieces.dataLake("S3", Map.of(
                 "region", "auto", "bucket", "spool", "endpoint", "http://localhost:9000", "accessKeyEnv", "R2_ACCESS_KEY")));
 
