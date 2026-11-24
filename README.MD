@@ -578,9 +578,28 @@ ones.
 |---|---|
 | `schedule` | When the janitor runs a round, as described in [Schedule](#schedule). Every 5s by default. |
 | `configuration.threshold` | How long an envelope can stay without moving before it is republished. |
-| `configuration.ttl` | How long an envelope stays in the inbox before it expires. |
+| `configuration.ttl` | How long a persisted envelope stays in the inbox before it expires. 1d by default. |
 | `configuration.maxInboxUpdateAttempts` | Rounds an event is tried when the inbox fails to apply it. 3 by default. |
 | `configuration.processedKeysWindow` | How long the janitor remembers the envelopes it marked as persisted, so a repeated `EnvelopePersisted` does not start their `ttl` again. 10m by default. |
+
+#### Deduplication window of the inbox
+
+A record is a duplicate while its envelope is in the inbox, so once the janitor removes it by its `ttl`, the same
+record would be captured again. `deduplicationWindow` in the `configuration` of the inbox piece keeps remembering
+the key of each removed envelope for longer, counted from when it was processed
+([ADR-033](https://linear.app/javier-castilla/document/adr-033-una-clave-procesada-se-guarda-con-el-momento-en-que-se-proceso-4c8f226f20a3)):
+
+- The janitor keeps the key before removing the envelope, and forgets the keys older than the window on each round.
+- The crawler refuses as a duplicate a key that is still kept, as if its envelope were there.
+- The keys are kept next to the envelopes of the inbox (`FILE_SYSTEM` or `S3`), so they outlive a restart and every
+  replica sees them.
+- Without it, nothing is kept and a record is a duplicate only while its envelope is in the inbox.
+- It has to be longer than the `ttl` of the janitor: a shorter one would never be used, and the load stops naming both.
+
+```yaml
+infrastructure:
+  inbox: {kind: INBOX, type: FILE_SYSTEM, configuration: {path: "/var/spool/inbox", deduplicationWindow: 30d}}
+```
 
 With a `quarantineServer` block, the janitor serves on its node's HTTP server an API to review and resolve the
 quarantine ([ADR-014](https://linear.app/javier-castilla/document/adr-014-el-janitor-expone-una-api-http-para-revisar-y-resolver-la-e7e6abbdabeb)).
